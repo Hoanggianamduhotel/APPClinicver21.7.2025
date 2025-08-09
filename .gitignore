@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js build output
+.next/
+out/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tgz
+*.tar.gz
+*.zip
+
+# Backup files
+*.backup
+medical-system-backup.tar.gz
+
+# Old config files
+*.old
+package-*.json
+tsconfig-*.json
+tailwind.config-*.js
+postcss.config-*.js
