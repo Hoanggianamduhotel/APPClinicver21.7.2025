@@ -1,4 +1,4 @@
-// DanhSachChoGrid.tsx - Fixed for Next.js Build
+// DanhSachChoGrid.tsx - Updated with Medical Age Logic & Build Fixes
 import React, { useState, useEffect } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box, Typography, IconButton } from '@mui/material';
@@ -55,14 +55,29 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
     fetchWaitingList();
   };
 
-  const hienThiTuoiTheoThang = (thangTuoi: number) => {
-    if (thangTuoi > 48) {
-      const tuoi = thangTuoi / 12;
-      const tuoiLamTron = Math.floor(tuoi * 2) / 2;
-      return `${tuoiLamTron} tuổi`;
-    } else {
+  /**
+   * Logic tính tuổi chuẩn y khoa:
+   * - Dưới 24 tháng: Hiện số tháng (VD: 18 tháng)
+   * - Từ 24 tháng trở lên: Hiện X tuổi Y th (VD: 2 t 5 th)
+   */
+  const hienThiTuoiTheoThang = (thangTuoi: number | null | undefined) => {
+    if (thangTuoi === null || thangTuoi === undefined) return "-";
+    
+    // Trường hợp trẻ nhỏ dưới 2 tuổi
+    if (thangTuoi < 24) {
       return `${thangTuoi} tháng`;
     }
+    
+    // Trường hợp từ 2 tuổi trở lên
+    const nam = Math.floor(thangTuoi / 12);
+    const thangLe = thangTuoi % 12;
+
+    if (thangLe === 0) {
+      return `${nam} tuổi`;
+    }
+    
+    // Định dạng gọn để hiển thị trong bảng: "2 t 3 th"
+    return `${nam} t ${thangLe} th`;
   };
 
   const columns: GridColDef[] = [
@@ -118,7 +133,7 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
         sx={{
           '& .MuiDataGrid-row': {
             cursor: 'pointer',
-            // ĐÃ SỬA LỖI TẠI ĐÂY: Ép kiểu (params: any) để truy cập .row mà không bị lỗi Theme
+            // Fix lỗi TypeScript 'row does not exist on type Theme'
             backgroundColor: (params: any) => 
               params.row?.benhnhan_id?.toString() === selectedId ? '#e3f2fd' : 'inherit',
           },
