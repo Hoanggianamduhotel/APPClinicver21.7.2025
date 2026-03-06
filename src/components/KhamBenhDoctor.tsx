@@ -1,6 +1,6 @@
-// KhamBenhDoctor.tsx - Tối ưu Focus phím Enter & Fix lỗi Build Netlify
+// KhamBenhDoctor.tsx - Tối ưu Focus phím Enter & Fix triệt để lỗi Build Netlify
 import React, { useState, useRef } from 'react';
-import { Box, TextField, Button, Grid2 as Grid, Typography, Divider } from '@mui/material';
+import { Box, TextField, Button, Grid, Typography, Divider } from '@mui/material';
 import { supabase } from '@/lib/supabase';
 
 interface KhamBenh {
@@ -25,7 +25,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Refs để điều khiển Focus
+  // Khởi tạo Refs để điều khiển Focus chuẩn HIS
   const trieuChungRef = useRef<HTMLDivElement>(null);
   const chanDoanRef = useRef<HTMLDivElement>(null);
   const ngayKhamRef = useRef<HTMLDivElement>(null);
@@ -35,6 +35,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
     setKhambenh(prev => ({ ...prev, [field]: value }));
   };
 
+  // Hàm xử lý chuyển Focus khi nhấn Enter (Shift + Enter để xuống dòng trong textarea)
   const handleKeyDown = (e: React.KeyboardEvent, nextRef?: React.RefObject<HTMLDivElement>, isSubmit: boolean = false) => {
     if (e.key === 'Enter') {
       if (!e.shiftKey) {
@@ -56,6 +57,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
     }
     if (!khambenh.trieu_chung || !khambenh.chan_doan) {
       alert('Vui lòng nhập Triệu chứng và Chẩn đoán');
+      trieuChungRef.current?.querySelector('textarea')?.focus();
       return;
     }
 
@@ -78,6 +80,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
       setKhambenhID(data.id.toString());
       
+      // Xóa khỏi danh sách chờ sau khi khám xong
       await supabase
         .from('danhsachcho')
         .delete()
@@ -85,6 +88,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
       alert('Lưu kết quả khám thành công!');
     } catch (error: any) {
+      console.error('Save error:', error);
       alert('Lỗi: ' + error.message);
     } finally {
       setIsLoading(false);
@@ -96,14 +100,14 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
       <Typography variant="subtitle1" sx={{ color: '#1976d2', fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
         NỘI DUNG THĂM KHÁM 
         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-          (Nhấn Enter để chuyển ô)
+          (Enter: Chuyển ô | Shift+Enter: Xuống dòng)
         </Typography>
       </Typography>
       <Divider sx={{ mb: 2 }} />
       
       <Grid container spacing={2}>
-        {/* HÀNG 1: TRIỆU CHỨNG & CHẨN ĐOÁN */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        {/* HÀNG 1: TRIỆU CHỨNG & CHẨN ĐOÁN (Mỗi cột chiếm 50%) */}
+        <Grid sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
           <TextField
             ref={trieuChungRef}
             fullWidth
@@ -117,7 +121,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
           <TextField
             ref={chanDoanRef}
             fullWidth
@@ -130,8 +134,8 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
 
-        {/* HÀNG 2: NGÀY HẸN & SỐ NGÀY TOA & NÚT LƯU */}
-        <Grid size={{ xs: 12, sm: 4 }}>
+        {/* HÀNG 2: NGÀY HẸN, SỐ NGÀY & NÚT LƯU (Mỗi cột chiếm 33.3%) */}
+        <Grid sx={{ gridColumn: { xs: "span 12", sm: "span 4" } }}>
           <TextField
             ref={ngayKhamRef}
             fullWidth
@@ -144,11 +148,11 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid size={{ xs: 12, sm: 4 }}>
+        <Grid sx={{ gridColumn: { xs: "span 12", sm: "span 4" } }}>
           <TextField
             ref={soNgayRef}
             fullWidth
-            label="4. Số ngày toa"
+            label="4. Số ngày thuốc"
             type="number"
             value={khambenh.so_ngay_toa}
             onChange={(e) => handleInputChange('so_ngay_toa', parseInt(e.target.value) || 0)}
@@ -156,7 +160,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid size={{ xs: 12, sm: 4 }}>
+        <Grid sx={{ gridColumn: { xs: "span 12", sm: "span 4" } }}>
           <Button
             fullWidth
             variant="contained"
@@ -166,7 +170,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
             disabled={isLoading || !khambenh.benhnhan_id}
             sx={{ height: '56px', fontWeight: 'bold' }}
           >
-            {isLoading ? 'ĐANG LƯU...' : 'LƯU (ENTER)'}
+            {isLoading ? 'ĐANG LƯU...' : 'LƯU KẾT QUẢ (ENTER)'}
           </Button>
         </Grid>
       </Grid>
