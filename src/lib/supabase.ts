@@ -1,12 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-project.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// 1. Export cho Client (Dùng cho giao diện DoctorView, ReceptionistView)
+// Dùng cho giao diện (Client)
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 2. Thêm hàm này để sửa lỗi Build (Dùng cho các file API trong thư mục src/app/api/)
+// Dùng cho API (Server) - Đây là thứ file route.ts của bạn đang tìm
 export const createServerSupabaseClient = () => {
   return createClient(supabaseUrl, supabaseKey);
 };
