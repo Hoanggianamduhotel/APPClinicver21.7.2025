@@ -1,4 +1,4 @@
-// DoctorView.tsx - Cập nhật hiển thị hồ sơ bệnh nhân đầy đủ
+// DoctorView.tsx - Bản fix lỗi Build Netlify (Exit Code 2)
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Topbar from "./Topbar";
@@ -20,7 +20,7 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
 
-// Định nghĩa Interface KhamBenh bao gồm cả thông tin hành chính để hiển thị
+// 1. Interface phải chính xác và không được thiếu trường khi gán trong onSelect
 interface KhamBenh {
   benhnhan_id: string;
   bacsi_id: string;
@@ -28,7 +28,6 @@ interface KhamBenh {
   trieu_chung: string;
   chan_doan: string;
   so_ngay_toa: number;
-  // Các trường bổ sung để hiển thị hồ sơ đầy đủ
   ho_ten?: string;
   tuoi_display?: string;
   can_nang?: string | number;
@@ -39,9 +38,9 @@ interface KhamBenh {
 const sectionTitleSx = {
   fontFamily: "Roboto, Helvetica, Arial, sans-serif",
   fontSize: "1.1rem",
-  fontWeight: 700 as const,
+  fontWeight: 700,
   color: "#1976d2",
-  textTransform: "uppercase" as const,
+  textTransform: "uppercase" as const, // Fix lỗi type string vs 'uppercase'
   mb: 1
 };
 
@@ -54,6 +53,11 @@ const DoctorView: React.FC = () => {
     trieu_chung: "",
     chan_doan: "",
     so_ngay_toa: 0,
+    ho_ten: "",
+    tuoi_display: "",
+    can_nang: "",
+    dia_chi: "",
+    so_dien_thoai: ""
   });
   const [selectedVisitId, setSelectedVisitId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -63,8 +67,6 @@ const DoctorView: React.FC = () => {
     window.location.href = "/login";
   };
   const toggleDrawer = () => setDrawerOpen(!drawerOpen);
-
-  const toaThuocHeight = (48 * 0.7225) * 10 + 48;
 
   return (
     <Box sx={{ bgcolor: "#f5f5f5", minHeight: "100vh" }}>
@@ -109,22 +111,22 @@ const DoctorView: React.FC = () => {
         </IconButton>
 
         <Box sx={{ flex: 1, p: 2, display: "flex", gap: 2, overflow: "hidden" }}>
-          {/* CỘT TRÁI: DANH SÁCH CHỜ & LỊCH SỬ */}
-          <Box sx={{ width: "300px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {/* CỘT TRÁI */}
+          <Box sx={{ width: "320px", display: "flex", flexDirection: "column", gap: 2 }}>
             <Paper sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <DanhSachChoGrid
                 onSelect={(bn: any) => {
                   setKhambenh((prev) => ({
                     ...prev,
-                    benhnhan_id: bn.benhnhan_id,
-                    ho_ten: bn.ho_ten,
-                    tuoi_display: bn.thang_tuoi_display,
-                    can_nang: bn.can_nang,
-                    dia_chi: bn.dia_chi,
-                    so_dien_thoai: bn.so_dien_thoai
+                    benhnhan_id: bn.benhnhan_id || "",
+                    ho_ten: bn.ho_ten || "",
+                    tuoi_display: bn.thang_tuoi_display || "",
+                    can_nang: bn.can_nang || "",
+                    dia_chi: bn.dia_chi || "",
+                    so_dien_thoai: bn.so_dien_thoai || ""
                   }));
-                  // Reset lịch sử toa khi chọn BN mới
                   setSelectedVisitId(null);
+                  setKhambenhID(null); // Reset ID khám mới khi chọn bệnh nhân mới
                 }}
                 selectedId={khambenh.benhnhan_id}
               />
@@ -146,10 +148,9 @@ const DoctorView: React.FC = () => {
             </Paper>
           </Box>
 
-          {/* CỘT PHẢI: CHI TIẾT KHÁM & TOA THUỐC */}
+          {/* CỘT PHẢI */}
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
             
-            {/* 1. HỒ SƠ HÀNH CHÍNH BỆNH NHÂN */}
             <Paper sx={{ p: 2, borderLeft: "5px solid #1976d2" }}>
               <Typography sx={sectionTitleSx}>Hồ sơ bệnh nhân</Typography>
               <Grid container spacing={2}>
@@ -178,9 +179,8 @@ const DoctorView: React.FC = () => {
               </Grid>
             </Paper>
 
-            {/* 2. FORM KHÁM BỆNH MỚI */}
             <Paper sx={{ p: 2 }}>
-              <Typography sx={sectionTitleSx}>Khám bệnh & Chẩn đoán</Typography>
+              <Typography sx={sectionTitleSx}>Nội dung thăm khám</Typography>
               <KhamBenhDoctor
                 setKhambenhID={setKhambenhID}
                 setKhambenh={setKhambenh}
@@ -188,15 +188,13 @@ const DoctorView: React.FC = () => {
               />
             </Paper>
 
-            {/* 3. LỊCH SỬ TOA THUỐC CŨ (Khi click từ VisitHistory) */}
             {selectedVisitId && (
               <Paper sx={{ p: 2, bgcolor: "#fffde7" }}>
-                <Typography sx={sectionTitleSx} color="secondary">Chi tiết toa thuốc cũ</Typography>
+                <Typography sx={sectionTitleSx} color="secondary">Chi tiết toa cũ</Typography>
                 <PrescriptionHistory visitId={selectedVisitId} />
               </Paper>
             )}
 
-            {/* 4. TOA THUỐC MỚI */}
             <Paper sx={{ p: 2, minHeight: 200 }}>
               <Typography sx={sectionTitleSx}>Toa thuốc mới</Typography>
               {khambenhID ? (
@@ -209,7 +207,7 @@ const DoctorView: React.FC = () => {
                 </>
               ) : (
                 <Typography variant="body2" color="textSecondary" align="center" sx={{ py: 4, border: "1px dashed #ccc" }}>
-                  Bác sĩ cần "Lưu kết quả khám" ở trên để kê toa thuốc
+                  Lưu "Nội dung thăm khám" ở trên để kê toa mới
                 </Typography>
               )}
             </Paper>
