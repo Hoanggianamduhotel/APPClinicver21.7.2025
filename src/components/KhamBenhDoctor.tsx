@@ -1,11 +1,11 @@
-// KhamBenhDoctor.tsx - Tối ưu Focus phím Enter & Fix triệt để lỗi Build Netlify
+// KhamBenhDoctor.tsx - Đã fix lỗi Foreign Key
 import React, { useState, useRef } from 'react';
 import { Box, TextField, Button, Grid, Typography, Divider } from '@mui/material';
 import { supabase } from '@/lib/supabase';
 
 interface KhamBenh {
   benhnhan_id: string;
-  bacsi_id: string;
+  bacsi_id: string; // ID này sẽ được lấy từ session
   ngay_kham: string;
   trieu_chung: string;
   chan_doan: string;
@@ -25,7 +25,6 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Khởi tạo Refs để điều khiển Focus chuẩn HIS
   const trieuChungRef = useRef<HTMLDivElement>(null);
   const chanDoanRef = useRef<HTMLDivElement>(null);
   const ngayKhamRef = useRef<HTMLDivElement>(null);
@@ -35,7 +34,6 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
     setKhambenh(prev => ({ ...prev, [field]: value }));
   };
 
-  // Hàm xử lý chuyển Focus khi nhấn Enter (Shift + Enter để xuống dòng trong textarea)
   const handleKeyDown = (e: React.KeyboardEvent, nextRef?: React.RefObject<HTMLDivElement>, isSubmit: boolean = false) => {
     if (e.key === 'Enter') {
       if (!e.shiftKey) {
@@ -55,6 +53,15 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
       alert('Vui lòng chọn bệnh nhân!');
       return;
     }
+
+    // 1. LẤY ID BÁC SĨ THỰC TẾ TỪ SESSION
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      alert('Phiên làm việc hết hạn, vui lòng đăng nhập lại!');
+      return;
+    }
+
     if (!khambenh.trieu_chung || !khambenh.chan_doan) {
       alert('Vui lòng nhập Triệu chứng và Chẩn đoán');
       trieuChungRef.current?.querySelector('textarea')?.focus();
@@ -63,11 +70,12 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
     setIsLoading(true);
     try {
+      // 2. SỬ DỤNG user.id ĐỂ LƯU VÀO KHÓA NGOẠI
       const { data, error: insertError } = await supabase
         .from('khambenh')
         .insert([{
           benhnhan_id: khambenh.benhnhan_id,
-          bacsi_id: "00000000-0000-0000-0000-000000000000",
+          bacsi_id: user.id, // Thay chuỗi số 0 bằng ID chuẩn từ hệ thống
           ngay_kham: khambenh.ngay_kham,
           trieu_chung: khambenh.trieu_chung,
           chan_doan: khambenh.chan_doan,
@@ -80,7 +88,6 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
       setKhambenhID(data.id.toString());
       
-      // Xóa khỏi danh sách chờ sau khi khám xong
       await supabase
         .from('danhsachcho')
         .delete()
@@ -89,7 +96,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
       alert('Lưu kết quả khám thành công!');
     } catch (error: any) {
       console.error('Save error:', error);
-      alert('Lỗi: ' + error.message);
+      alert('Lỗi lưu dữ liệu: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -97,16 +104,16 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
   return (
     <Box>
+      {/* ... Phần giao diện giữ nguyên ... */}
       <Typography variant="subtitle1" sx={{ color: '#1976d2', fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
         NỘI DUNG THĂM KHÁM 
         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-          (Enter: Chuyển ô | Shift+Enter: Xuống dòng)
+          (Bác sĩ: {khambenh.bacsi_id || 'Đang xác thực...'})
         </Typography>
       </Typography>
       <Divider sx={{ mb: 2 }} />
       
       <Grid container spacing={2}>
-        {/* HÀNG 1: TRIỆU CHỨNG & CHẨN ĐOÁN (Mỗi cột chiếm 50%) */}
         <Grid sx={{ gridColumn: { xs: "span 12", md: "span 6" } }}>
           <TextField
             ref={trieuChungRef}
@@ -134,7 +141,6 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
 
-        {/* HÀNG 2: NGÀY HẸN, SỐ NGÀY & NÚT LƯU (Mỗi cột chiếm 33.3%) */}
         <Grid sx={{ gridColumn: { xs: "span 12", sm: "span 4" } }}>
           <TextField
             ref={ngayKhamRef}
