@@ -1,9 +1,8 @@
-// VisitHistory.tsx - Đã sửa lỗi deploy (MUI v5+)
 import React, { useState, useEffect } from 'react';
 import { 
   List, 
   ListItem, 
-  ListItemButton, // Thêm import ListItemButton
+  ListItemButton, 
   ListItemText, 
   Typography, 
   Box, 
@@ -20,7 +19,7 @@ interface Visit {
 }
 
 interface VisitHistoryProps {
-  benhnhan_id: string;
+  benhnhan_id: string; // Đây là UUID (string)
   onSelectVisit: (visitId: string) => void;
 }
 
@@ -30,18 +29,21 @@ const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit 
   useEffect(() => {
     if (benhnhan_id) {
       fetchVisitHistory();
+    } else {
+      setVisits([]); // Xóa danh sách nếu không có ID
     }
   }, [benhnhan_id]);
 
   const fetchVisitHistory = async () => {
+    // SỬA LỖI TẠI ĐÂY: Bỏ parseInt() vì benhnhan_id là UUID (string)
     const { data, error } = await supabase
       .from('khambenh')
       .select('id, ngay_kham, trieu_chung, chan_doan, so_ngay_toa')
-      .eq('benhnhan_id', parseInt(benhnhan_id))
+      .eq('benhnhan_id', benhnhan_id) 
       .order('ngay_kham', { ascending: false });
 
     if (error) {
-      console.error('Error fetching visit history:', error);
+      console.error('Error fetching visit history:', error.message);
       return;
     }
 
@@ -49,52 +51,69 @@ const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit 
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
     return new Date(dateString).toLocaleDateString('vi-VN');
   };
 
+  if (!benhnhan_id) return null;
+
   if (visits.length === 0) {
     return (
-      <Typography variant="body2" color="textSecondary" sx={{ p: 2 }}>
-        Chưa có lịch sử khám bệnh
+      <Typography variant="body2" color="textSecondary" sx={{ p: 2, textAlign: 'center' }}>
+        Chưa có lịch sử khám bệnh cho BN này
       </Typography>
     );
   }
 
   return (
-    <List dense>
+    <List dense sx={{ width: '100%', bgcolor: 'background.paper' }}>
       {visits.map((visit, index) => (
         <React.Fragment key={visit.id}>
-          {/* Thay ListItem button bằng ListItem + ListItemButton */}
           <ListItem disablePadding>
             <ListItemButton 
               onClick={() => onSelectVisit(visit.id.toString())}
               sx={{ 
-                '&:hover': { backgroundColor: '#f5f5f5' }
+                borderLeft: '4px solid transparent',
+                '&:hover': { 
+                  backgroundColor: '#e3f2fd',
+                  borderLeft: '4px solid #1976d2' 
+                }
               }}
             >
               <ListItemText
                 primary={
-                  <Box>
-                    <Typography variant="subtitle2" color="primary">
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>
                       {formatDate(visit.ngay_kham)}
                     </Typography>
-                    <Typography variant="body2" color="textPrimary">
-                      {visit.chan_doan || "Chưa có chẩn đoán"}
+                    <Typography variant="caption" color="textSecondary">
+                      {visit.so_ngay_toa} ngày thuốc
                     </Typography>
                   </Box>
                 }
                 secondary={
-                  <Typography variant="caption" color="textSecondary" component="span">
-                    {visit.trieu_chung && visit.trieu_chung.length > 50 
-                      ? visit.trieu_chung.substring(0, 50) + '...'
-                      : visit.trieu_chung || "Không có triệu chứng ghi nhận"
-                    }
-                  </Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <Typography variant="body2" color="textPrimary" sx={{ fontWeight: 500 }}>
+                      CĐ: {visit.chan_doan || "Chưa có chẩn đoán"}
+                    </Typography>
+                    <Typography 
+                      variant="caption" 
+                      color="textSecondary" 
+                      sx={{ 
+                        display: 'block',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      TC: {visit.trieu_chung || "Không ghi nhận"}
+                    </Typography>
+                  </Box>
                 }
               />
             </ListItemButton>
           </ListItem>
-          {index < visits.length - 1 && <Divider />}
+          {index < visits.length - 1 && <Divider component="li" />}
         </React.Fragment>
       ))}
     </List>
