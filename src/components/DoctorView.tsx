@@ -1,4 +1,4 @@
-// DoctorView.tsx - Bản fix lỗi Build Netlify (Exit Code 2) chuẩn MUI v7
+// DoctorView.tsx - Bản fix triệt để lỗi Build Netlify (Exit Code 2)
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Topbar from "./Topbar";
@@ -13,14 +13,14 @@ import {
   Button,
   Typography,
   Paper,
-  Grid2 as Grid, // Sử dụng Grid2 để fix lỗi 'item' không tồn tại
+  Grid, // Dùng Grid chuẩn, không dùng Grid2 để tránh lỗi Export
   IconButton,
   Divider
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
 
-// Interface đồng bộ với dữ liệu từ Database
+// Interface đồng bộ
 interface KhamBenh {
   benhnhan_id: string;
   bacsi_id: string;
@@ -73,23 +73,10 @@ const DoctorView: React.FC = () => {
       <Topbar />
       <Box sx={{ display: "flex", height: "calc(100vh - 64px)", mt: 8 }}>
         {drawerOpen && (
-          <Box
-            sx={{
-              width: 240,
-              display: "flex",
-              flexDirection: "column",
-              bgcolor: "background.paper",
-              boxShadow: 1,
-              zIndex: 1200
-            }}
-          >
+          <Box sx={{ width: 240, display: "flex", flexDirection: "column", bgcolor: "background.paper", boxShadow: 1, zIndex: 1200 }}>
             <Sidebar role="doctor" />
             <Box sx={{ flexGrow: 1 }} />
-            <Button
-              startIcon={<LogoutIcon />}
-              onClick={handleLogout}
-              sx={{ justifyContent: "flex-start", m: 1 }}
-            >
+            <Button startIcon={<LogoutIcon />} onClick={handleLogout} sx={{ justifyContent: "flex-start", m: 1 }}>
               Đăng xuất
             </Button>
           </Box>
@@ -98,20 +85,15 @@ const DoctorView: React.FC = () => {
         <IconButton
           onClick={toggleDrawer}
           sx={{
-            position: "fixed",
-            top: 72,
-            left: drawerOpen ? 240 : 0,
-            zIndex: 1300,
-            bgcolor: "white",
-            boxShadow: 1,
-            "&:hover": { bgcolor: "#e3f2fd" }
+            position: "fixed", top: 72, left: drawerOpen ? 240 : 0, zIndex: 1300,
+            bgcolor: "white", boxShadow: 1, "&:hover": { bgcolor: "#e3f2fd" }
           }}
         >
           <MenuIcon />
         </IconButton>
 
         <Box sx={{ flex: 1, p: 2, display: "flex", gap: 2, overflow: "hidden" }}>
-          {/* CỘT TRÁI: DANH SÁCH CHỜ & LỊCH SỬ */}
+          {/* CỘT TRÁI */}
           <Box sx={{ width: "320px", display: "flex", flexDirection: "column", gap: 2 }}>
             <Paper sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <DanhSachChoGrid
@@ -136,10 +118,7 @@ const DoctorView: React.FC = () => {
               <Typography sx={sectionTitleSx}>Lịch sử khám</Typography>
               <Divider sx={{ mb: 1 }} />
               {khambenh.benhnhan_id ? (
-                <VisitHistory
-                  benhnhan_id={khambenh.benhnhan_id}
-                  onSelectVisit={setSelectedVisitId}
-                />
+                <VisitHistory benhnhan_id={khambenh.benhnhan_id} onSelectVisit={setSelectedVisitId} />
               ) : (
                 <Typography variant="body2" color="textSecondary" align="center" sx={{ mt: 2 }}>
                   Chọn bệnh nhân để xem lịch sử
@@ -148,32 +127,33 @@ const DoctorView: React.FC = () => {
             </Paper>
           </Box>
 
-          {/* CỘT PHẢI: CHI TIẾT KHÁM & KÊ TOA */}
+          {/* CỘT PHẢI */}
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
             
-            {/* HỒ SƠ HÀNH CHÍNH - FIX LỖI GRID Ở ĐÂY */}
+            {/* HỒ SƠ HÀNH CHÍNH - FIX LỖI GRID TẠI ĐÂY */}
             <Paper sx={{ p: 2, borderLeft: "5px solid #1976d2" }}>
               <Typography sx={sectionTitleSx}>Hồ sơ bệnh nhân</Typography>
               <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 4 }}>
+                {/* Dùng sx thay cho prop item/xs/md để an toàn tuyệt đối với TS */}
+                <Grid sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
                   <Typography variant="caption" color="textSecondary">Họ và tên</Typography>
                   <Typography variant="body1" sx={{ fontWeight: 700, color: "#d32f2f" }}>
                     {khambenh.ho_ten ? khambenh.ho_ten.toUpperCase() : "---"}
                   </Typography>
                 </Grid>
-                <Grid size={{ xs: 6, md: 2 }}>
+                <Grid sx={{ gridColumn: { xs: "span 6", md: "span 2" } }}>
                   <Typography variant="caption" color="textSecondary">Tuổi</Typography>
                   <Typography variant="body1">{khambenh.tuoi_display || "---"}</Typography>
                 </Grid>
-                <Grid size={{ xs: 6, md: 2 }}>
+                <Grid sx={{ gridColumn: { xs: "span 6", md: "span 2" } }}>
                   <Typography variant="caption" color="textSecondary">Cân nặng</Typography>
                   <Typography variant="body1">{khambenh.can_nang ? `${khambenh.can_nang} kg` : "---"}</Typography>
                 </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
                   <Typography variant="caption" color="textSecondary">Số điện thoại</Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>{khambenh.so_dien_thoai || "---"}</Typography>
                 </Grid>
-                <Grid size={{ xs: 12 }}>
+                <Grid sx={{ gridColumn: { xs: "span 12" } }}>
                   <Typography variant="caption" color="textSecondary">Địa chỉ</Typography>
                   <Typography variant="body2">{khambenh.dia_chi || "---"}</Typography>
                 </Grid>
@@ -189,7 +169,6 @@ const DoctorView: React.FC = () => {
               />
             </Paper>
 
-            {/* XEM LẠI TOA CŨ NẾU CHỌN TỪ LỊCH SỬ */}
             {selectedVisitId && (
               <Paper sx={{ p: 2, bgcolor: "#fffde7" }}>
                 <Typography sx={sectionTitleSx} color="secondary">Chi tiết toa cũ</Typography>
@@ -204,13 +183,13 @@ const DoctorView: React.FC = () => {
                 <>
                   <ToaThuocDoctor khambenhID={khambenhID} />
                   <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
-                    <Button variant="contained" color="primary" size="large" sx={{ px: 4 }}>Lưu toa</Button>
+                    <Button variant="contained" size="large" sx={{ px: 4 }}>Lưu toa</Button>
                     <Button variant="outlined" size="large">In toa thuốc</Button>
                   </Box>
                 </>
               ) : (
-                <Box sx={{ py: 4, border: "1px dashed #ccc", borderRadius: 1, textAlign: "center" }}>
-                   <Typography variant="body2" color="textSecondary">
+                <Box sx={{ py: 4, border: "1px dashed #ccc", textAlign: "center", borderRadius: 1 }}>
+                  <Typography variant="body2" color="textSecondary">
                     Lưu "Nội dung thăm khám" ở trên để kê toa mới
                   </Typography>
                 </Box>
