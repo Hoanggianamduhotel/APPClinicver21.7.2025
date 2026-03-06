@@ -1,12 +1,13 @@
-// DanhSachChoGrid.tsx - Updated with Medical Age Logic & Build Fixes
 import React, { useState, useEffect } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box, Typography, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { supabase } from '@/lib/supabase';
 
+// 1. Sửa Interface để khớp với SQL (benhnhan_id là string/uuid)
 interface Patient {
-  benhnhan_id: number;
+  id: number; // Cột serial trong SQL
+  benhnhan_id: string; // UUID từ bảng benhnhan
   ho_ten: string;
   ngay_sinh: string;
   thang_tuoi: number;
@@ -28,10 +29,11 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
   }, []);
 
   const fetchWaitingList = async () => {
+    // 2. Sửa order('created_at') thành order('id') hoặc bỏ order nếu không cần
     const { data, error } = await supabase
       .from('danhsachcho')
-      .select('benhnhan_id, ho_ten, ngay_sinh, thang_tuoi, can_nang, dia_chi, so_dien_thoai')
-      .order('created_at', { ascending: true });
+      .select('id, benhnhan_id, ho_ten, ngay_sinh, thang_tuoi, can_nang, dia_chi, so_dien_thoai')
+      .order('id', { ascending: true }); // Sắp xếp theo ID tự tăng
     
     if (error) {
       console.error('Error fetching waiting list:', error);
@@ -41,11 +43,12 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
     setPatients(data || []);
   };
 
-  const handleRemoveFromQueue = async (benhnhan_id: number) => {
+  // 3. Sửa kiểu dữ liệu tham số thành string cho UUID
+  const handleRemoveFromQueue = async (uuid: string) => {
     const { error } = await supabase
       .from('danhsachcho')
       .delete()
-      .eq('benhnhan_id', benhnhan_id);
+      .eq('benhnhan_id', uuid);
     
     if (error) {
       console.error('Error removing from queue:', error);
@@ -55,29 +58,13 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
     fetchWaitingList();
   };
 
-  /**
-   * Logic tính tuổi chuẩn y khoa:
-   * - Dưới 24 tháng: Hiện số tháng (VD: 18 tháng)
-   * - Từ 24 tháng trở lên: Hiện X tuổi Y th (VD: 2 t 5 th)
-   */
   const hienThiTuoiTheoThang = (thangTuoi: number | null | undefined) => {
     if (thangTuoi === null || thangTuoi === undefined) return "-";
+    if (thangTuoi < 24) return `${thangTuoi} tháng`;
     
-    // Trường hợp trẻ nhỏ dưới 2 tuổi
-    if (thangTuoi < 24) {
-      return `${thangTuoi} tháng`;
-    }
-    
-    // Trường hợp từ 2 tuổi trở lên
     const nam = Math.floor(thangTuoi / 12);
     const thangLe = thangTuoi % 12;
-
-    if (thangLe === 0) {
-      return `${nam} tuổi`;
-    }
-    
-    // Định dạng gọn để hiển thị trong bảng: "2 t 3 th"
-    return `${nam} t ${thangLe} th`;
+    return thangLe === 0 ? `${nam} tuổi` : `${nam} t ${thangLe} th`;
   };
 
   const columns: GridColDef[] = [
@@ -122,24 +109,27 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
       </Typography>
       <DataGrid
         rows={patients.map((patient) => ({
-          id: patient.benhnhan_id,
+          id: patient.id, // Sử dụng ID serial của bảng danhsachcho
           benhnhan_id: patient.benhnhan_id,
           ho_ten: patient.ho_ten,
           thang_tuoi_display: hienThiTuoiTheoThang(patient.thang_tuoi),
-          can_nang: patient.can_nang + ' kg',
+          can_nang: patient.can_nang ? `${patient.can_nang} kg` : '-',
+          // Giữ lại các trường gốc để onSelect hoạt động đúng
+          dia_chi: patient.dia_chi,
+          so_dien_thoai: patient.so_dien_thoai,
+          thang_tuoi: patient.thang_tuoi,
+          ngay_sinh: patient.ngay_sinh
         }))}
         columns={columns}
         onRowClick={(params) => onSelect(params.row as Patient)}
         sx={{
           '& .MuiDataGrid-row': {
             cursor: 'pointer',
-            // Fix lỗi TypeScript 'row does not exist on type Theme'
+            // Kiểm tra selectedId khớp với UUID
             backgroundColor: (params: any) => 
-              params.row?.benhnhan_id?.toString() === selectedId ? '#e3f2fd' : 'inherit',
+              params.row?.benhnhan_id === selectedId ? '#e3f2fd !important' : 'inherit',
           },
-          '& .MuiDataGrid-cell:focus': {
-            outline: 'none',
-          },
+          '& .MuiDataGrid-cell:focus': { outline: 'none' },
           border: 'none',
         }}
         hideFooter
