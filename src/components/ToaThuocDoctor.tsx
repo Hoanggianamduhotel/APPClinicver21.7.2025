@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, Button, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, TextField, Paper, IconButton, Typography,
-  Autocomplete, Divider, Card, CardContent
+  Autocomplete, Card, CardContent
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, History as HistoryIcon } from '@mui/icons-material';
 import { supabase } from '@/lib/supabase';
@@ -35,7 +35,7 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
   const [danhMucThuoc, setDanhMucThuoc] = useState<ThuocDanhMuc[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 1. Fetch Danh mục thuốc & Toa thuốc đã lưu
+  // 1. Fetch dữ liệu từ Supabase
   const fetchData = useCallback(async () => {
     if (!khambenhID) return;
 
@@ -61,7 +61,7 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
     fetchData();
   }, [fetchData]);
 
-  // Kiểm tra thời gian 20 phút
+  // Kiểm tra thời gian 20 phút (logic nghiệp vụ HIS)
   const checkEditTime = async () => {
     const { data: visit } = await supabase
       .from('khambenh')
@@ -90,7 +90,10 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
 
   const handleSave = async () => {
     const canEdit = await checkEditTime();
-    if (!canEdit) return alert('⚠️ Tờ điều trị đã khóa (quá 20 phút). Hãy tạo tờ điều trị mới!');
+    if (!canEdit) {
+      alert('⚠️ Tờ điều trị đã khóa (quá 20 phút). Hãy tạo tờ điều trị mới!');
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -102,8 +105,8 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
           return {
             khambenh_id: khambenhID,
             thuoc_id: med.thuoc_id,
-            so_lan_dung: med.so_lan_dung,
-            so_luong_moi_lan: med.so_luong_moi_lan,
+            so_lan_dung: Number(med.so_lan_dung),
+            so_luong_moi_lan: Number(med.so_luong_moi_lan),
             tong_so_luong: tong_sl,
             don_vi: med.don_vi,
             ghi_chu: med.ghi_chu,
@@ -115,11 +118,11 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
       const { error } = await supabase.from('toathuoc').insert(toInsert);
       if (error) throw error;
 
-      alert('Đã lưu toa thuốc!');
+      alert('Đã lưu toa thuốc vào hồ sơ!');
       setMedications([]);
-      fetchData(); // Load lại danh sách đã lưu
+      fetchData();
     } catch (err: any) {
-      alert('Lỗi: ' + err.message);
+      alert('Lỗi lưu dữ liệu: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -127,9 +130,12 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
 
   const handleDeleteSaved = async (id: string) => {
     const canEdit = await checkEditTime();
-    if (!canEdit) return alert('⚠️ Đã quá 20 phút, không thể xóa y lệnh thuốc này!');
+    if (!canEdit) {
+      alert('⚠️ Đã quá 20 phút, y lệnh thuốc đã được chốt, không thể xóa!');
+      return;
+    }
 
-    if (window.confirm('Bạn có chắc chắn muốn hủy thuốc này khỏi toa?')) {
+    if (window.confirm('Hủy thuốc này khỏi tờ điều trị?')) {
       const { error } = await supabase.from('toathuoc').delete().eq('id', id);
       if (!error) fetchData();
     }
@@ -137,28 +143,28 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* PHẦN 1: NHẬP THUỐC MỚI */}
-      <Card variant="outlined" sx={{ borderColor: '#1976d2' }}>
+      {/* KHU VỰC 1: NHẬP Y LỆNH MỚI */}
+      <Card variant="outlined" sx={{ borderColor: '#1976d2', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
         <CardContent>
-          <Typography variant="subtitle2" sx={{ mb: 2, color: '#1976d2', fontWeight: 'bold' }}>
-            + KÊ TOA / RA Y LỆNH MỚI
+          <Typography variant="subtitle2" sx={{ mb: 2, color: '#1976d2', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AddIcon fontSize="small" /> THÊM Y LỆNH THUỐC MỚI
           </Typography>
           <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
-            <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddRow}>Thêm thuốc</Button>
-            <Button variant="contained" color="primary" onClick={handleSave} disabled={medications.length === 0 || isSaving}>
-              {isSaving ? 'Đang lưu...' : 'Lưu vào hồ sơ'}
+            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={handleAddRow}>Dòng mới</Button>
+            <Button variant="contained" size="small" color="primary" onClick={handleSave} disabled={medications.length === 0 || isSaving}>
+              {isSaving ? 'Đang xử lý...' : 'Xác nhận cấp thuốc'}
             </Button>
           </Box>
           <TableContainer>
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: '#f0f7ff' }}>
-                  <TableCell width="35%">Tên thuốc</TableCell>
+                  <TableCell width="35%">Tên thuốc (Kho)</TableCell>
                   <TableCell width="10%">ĐVT</TableCell>
-                  <TableCell align="center">Lần/Ngày</TableCell>
-                  <TableCell align="center">SL/Lần</TableCell>
-                  <TableCell>Ghi chú</TableCell>
-                  <TableCell align="center">Xóa</TableCell>
+                  <TableCell align="center" width="12%">Lần/Ngày</TableCell>
+                  <TableCell align="center" width="12%">SL/Lần</TableCell>
+                  <TableCell>Cách dùng</TableCell>
+                  <TableCell align="center" width="5%">Xóa</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -174,15 +180,24 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
                             don_vi: v?.don_vi || '', ghi_chu: v?.duong_dung || ''
                           } : m));
                         }}
-                        renderInput={(p) => <TextField {...p} size="small" variant="standard" />}
+                        renderInput={(p) => <TextField {...p} size="small" variant="standard" placeholder="Tìm thuốc..." />}
                       />
                     </TableCell>
                     <TableCell>{row.don_vi}</TableCell>
-                    <TableCell><TextField type="number" size="small" value={row.so_lan_dung} onChange={(e) => setMedications(medications.map(m => m.id === row.id ? {...m, so_lan_dung: +e.target.value} : m))} /></TableCell>
-                    <TableCell><TextField type="number" size="small" value={row.so_luong_moi_lan} onChange={(e) => setMedications(medications.map(m => m.id === row.id ? {...m, so_luong_moi_lan: +e.target.value} : m))} /></TableCell>
-                    <TableCell><TextField fullWidth size="small" value={row.ghi_chu} onChange={(e) => setMedications(medications.map(m => m.id === row.id ? {...m, ghi_chu: e.target.value} : m))} /></TableCell>
+                    <TableCell>
+                      <TextField type="number" size="small" value={row.so_lan_dung} 
+                        onChange={(e) => setMedications(medications.map(m => m.id === row.id ? {...m, so_lan_dung: Number(e.target.value)} : m))} />
+                    </TableCell>
+                    <TableCell>
+                      <TextField type="number" size="small" value={row.so_luong_moi_lan} 
+                        onChange={(e) => setMedications(medications.map(m => m.id === row.id ? {...m, so_luong_moi_lan: Number(e.target.value)} : m))} />
+                    </TableCell>
+                    <TableCell>
+                      <TextField fullWidth size="small" value={row.ghi_chu} 
+                        onChange={(e) => setMedications(medications.map(m => m.id === row.id ? {...m, ghi_chu: e.target.value} : m))} />
+                    </TableCell>
                     <TableCell align="center">
-                      <IconButton onClick={() => setMedications(medications.filter(m => m.id !== row.id))}><DeleteIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={() => setMedications(medications.filter(m => m.id !== row.id))}><DeleteIcon fontSize="small" /></IconButton>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -192,10 +207,10 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
         </CardContent>
       </Card>
 
-      {/* PHẦN 2: DANH SÁCH THUỐC ĐÃ LƯU */}
+      {/* KHU VỰC 2: LỊCH SỬ Y LỆNH (ĐÃ LƯU) */}
       <Box>
-        <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 'bold' }}>
-          <HistoryIcon fontSize="small" /> Y LỆNH ĐÃ THỰC HIỆN
+        <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 'bold', color: 'text.secondary' }}>
+          <HistoryIcon fontSize="small" /> DANH SÁCH Y LỆNH TRONG TỜ ĐIỀU TRỊ
         </Typography>
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
@@ -215,8 +230,14 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
                   <TableCell sx={{ fontWeight: 500 }}>{item.thuoc?.ten_thuoc}</TableCell>
                   <TableCell align="center">{item.tong_so_luong}</TableCell>
                   <TableCell>{item.don_vi}</TableCell>
-                  <TableCell variant="caption">{item.ghi_chu}</TableCell>
-                  <TableCell sx={{ color: item.trang_thai === 'Chờ' ? 'orange' : 'green' }}>{item.trang_thai}</TableCell>
+                  <TableCell>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {item.ghi_chu}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ color: item.trang_thai === 'Chờ' ? '#ed6c02' : '#2e7d32', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    {item.trang_thai}
+                  </TableCell>
                   <TableCell align="center">
                     <IconButton size="small" color="error" onClick={() => handleDeleteSaved(item.id)}>
                       <DeleteIcon fontSize="small" />
@@ -226,7 +247,9 @@ const ToaThuocDoctor: React.FC<ToaThuocDoctorProps> = ({ khambenhID }) => {
               ))}
               {savedToa.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>Chưa có thuốc nào được kê cho tờ điều trị này</TableCell>
+                  <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                    Chưa có y lệnh thuốc nào được ghi nhận.
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
