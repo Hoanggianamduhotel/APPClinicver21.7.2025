@@ -1,6 +1,6 @@
-// KhamBenhDoctor.tsx - Tối ưu Focus phím Enter chuẩn HIS
+// KhamBenhDoctor.tsx - Fix lỗi Build Netlify & Giao diện 2 hàng chuẩn HIS
 import React, { useState, useRef } from 'react';
-import { Box, TextField, Button, Grid, Typography } from '@mui/material';
+import { Box, TextField, Button, Grid, Typography, Divider } from '@mui/material';
 import { supabase } from '@/lib/supabase';
 
 interface KhamBenh {
@@ -25,21 +25,18 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Khởi tạo Refs để điều khiển Focus
+  // Refs để điều khiển Focus bằng phím Enter
   const trieuChungRef = useRef<HTMLDivElement>(null);
   const chanDoanRef = useRef<HTMLDivElement>(null);
-  const ngayKhamRef = useRef<HTMLDivElement>(null);
+  const ngayHenRef = useRef<HTMLDivElement>(null);
   const soNgayRef = useRef<HTMLDivElement>(null);
 
   const handleInputChange = (field: keyof KhamBenh, value: string | number) => {
     setKhambenh(prev => ({ ...prev, [field]: value }));
   };
 
-  // Hàm xử lý chuyển Focus khi nhấn Enter
   const handleKeyDown = (e: React.KeyboardEvent, nextRef?: React.RefObject<HTMLDivElement>, isSubmit: boolean = false) => {
     if (e.key === 'Enter') {
-      // Nếu là TextField multiline, Enter mặc định là xuống dòng, 
-      // nhưng trong HIS thường ưu tiên chuyển ô, nên ta dùng Shift + Enter để xuống dòng
       if (!e.shiftKey) {
         e.preventDefault();
         if (isSubmit) {
@@ -54,12 +51,11 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
   const handleSave = async () => {
     if (!khambenh.benhnhan_id) {
-      alert('Vui lòng chọn bệnh nhân!');
+      alert('Vui lòng chọn bệnh nhân trước!');
       return;
     }
     if (!khambenh.trieu_chung || !khambenh.chan_doan) {
-      alert('Vui lòng nhập Triệu chứng và Chẩn đoán');
-      trieuChungRef.current?.querySelector('textarea')?.focus();
+      alert('Vui lòng nhập đầy đủ Triệu chứng và Chẩn đoán');
       return;
     }
 
@@ -79,17 +75,11 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
         .single();
 
       if (insertError) throw insertError;
-
       setKhambenhID(data.id.toString());
       
-      await supabase
-        .from('danhsachcho')
-        .delete()
-        .eq('benhnhan_id', khambenh.benhnhan_id);
-
-      alert('Lưu kết quả khám thành công!');
+      await supabase.from('danhsachcho').delete().eq('benhnhan_id', khambenh.benhnhan_id);
+      alert('Đã lưu kết quả khám thành công!');
     } catch (error: any) {
-      console.error('Save error:', error);
       alert('Lỗi: ' + error.message);
     } finally {
       setIsLoading(false);
@@ -98,18 +88,24 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        NỘI DUNG THĂM KHÁM <Typography variant="caption" sx={{ color: 'text.secondary' }}>(Nhấn Enter để chuyển ô)</Typography>
+      <Typography variant="subtitle1" sx={{ color: '#1976d2', fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+        NỘI DUNG THĂM KHÁM
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 400 }}>
+          (Enter: chuyển ô | Shift+Enter: xuống dòng)
+        </Typography>
       </Typography>
+      <Divider sx={{ mb: 2 }} />
       
       <Grid container spacing={2}>
-        <Grid {...({ item: true, xs: 12, md: 6 } as any)}>
+        {/* HÀNG 1: TRIỆU CHỨNG & CHẨN ĐOÁN */}
+        <Grid item xs={12} md={6}>
           <TextField
             ref={trieuChungRef}
             fullWidth
             label="1. Triệu chứng"
             multiline
-            rows={3}
+            rows={2}
+            placeholder="Nhập triệu chứng..."
             value={khambenh.trieu_chung}
             onChange={(e) => handleInputChange('trieu_chung', e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, chanDoanRef)}
@@ -117,24 +113,26 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid {...({ item: true, xs: 12, md: 6 } as any)}>
+        <Grid item xs={12} md={6}>
           <TextField
             ref={chanDoanRef}
             fullWidth
             label="2. Chẩn đoán"
             multiline
-            rows={3}
+            rows={2}
+            placeholder="Nhập chẩn đoán..."
             value={khambenh.chan_doan}
             onChange={(e) => handleInputChange('chan_doan', e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, ngayKhamRef)}
+            onKeyDown={(e) => handleKeyDown(e, ngayHenRef)}
           />
         </Grid>
-        
-        <Grid {...({ item: true, xs: 12, sm: 6, md: 4 } as any)}>
+
+        {/* HÀNG 2: NGÀY HẸN, SỐ NGÀY TOA & NÚT LƯU */}
+        <Grid item xs={12} sm={4}>
           <TextField
-            ref={ngayKhamRef}
+            ref={ngayHenRef}
             fullWidth
-            label="3. Ngày khám"
+            label="3. Ngày hẹn tái khám"
             type="date"
             value={khambenh.ngay_kham}
             onChange={(e) => handleInputChange('ngay_kham', e.target.value)}
@@ -143,19 +141,19 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid {...({ item: true, xs: 12, sm: 6, md: 4 } as any)}>
+        <Grid item xs={12} sm={4}>
           <TextField
             ref={soNgayRef}
             fullWidth
-            label="4. Số ngày thuốc"
+            label="4. Số ngày thuốc (toa)"
             type="number"
             value={khambenh.so_ngay_toa}
             onChange={(e) => handleInputChange('so_ngay_toa', parseInt(e.target.value) || 0)}
-            onKeyDown={(e) => handleKeyDown(e, undefined, true)} // Enter ở đây sẽ Save
+            onKeyDown={(e) => handleKeyDown(e, undefined, true)}
           />
         </Grid>
         
-        <Grid {...({ item: true, xs: 12, md: 4 } as any)} sx={{ display: 'flex', alignItems: 'center' }}>
+        <Grid item xs={12} sm={4}>
           <Button
             fullWidth
             variant="contained"
@@ -163,9 +161,9 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
             size="large"
             onClick={handleSave}
             disabled={isLoading || !khambenh.benhnhan_id}
-            sx={{ height: '56px', fontWeight: 'bold', fontSize: '1.1rem' }}
+            sx={{ height: '56px', fontWeight: 'bold', fontSize: '1rem' }}
           >
-            {isLoading ? 'ĐANG LƯU...' : 'LƯU (ENTER)'}
+            {isLoading ? 'ĐANG LƯU...' : 'LƯU KẾT QUẢ (ENTER)'}
           </Button>
         </Grid>
       </Grid>
