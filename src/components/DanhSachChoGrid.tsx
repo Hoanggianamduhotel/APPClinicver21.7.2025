@@ -1,4 +1,4 @@
-// DanhSachChoGrid.tsx - Restored from original system
+// DanhSachChoGrid.tsx - Fixed for Next.js Build
 import React, { useState, useEffect } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box, Typography, IconButton } from '@mui/material';
@@ -114,12 +114,13 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
           can_nang: patient.can_nang + ' kg',
         }))}
         columns={columns}
-        onRowClick={(params) => onSelect(params.row)}
+        onRowClick={(params) => onSelect(params.row as Patient)}
         sx={{
           '& .MuiDataGrid-row': {
             cursor: 'pointer',
-            backgroundColor: params => 
-              params.row.benhnhan_id.toString() === selectedId ? '#e3f2fd' : 'inherit',
+            // ĐÃ SỬA LỖI TẠI ĐÂY: Ép kiểu (params: any) để truy cập .row mà không bị lỗi Theme
+            backgroundColor: (params: any) => 
+              params.row?.benhnhan_id?.toString() === selectedId ? '#e3f2fd' : 'inherit',
           },
           '& .MuiDataGrid-cell:focus': {
             outline: 'none',
