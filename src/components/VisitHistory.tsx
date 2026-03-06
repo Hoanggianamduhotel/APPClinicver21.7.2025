@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// VisitHistory.tsx - Đã fix lỗi load dữ liệu và kiểu ID
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   List, 
   ListItem, 
@@ -11,7 +12,7 @@ import {
 import { supabase } from '@/lib/supabase';
 
 interface Visit {
-  id: number;
+  id: string; // Chuyển từ number sang string vì là UUID
   ngay_kham: string;
   trieu_chung: string;
   chan_doan: string;
@@ -19,23 +20,19 @@ interface Visit {
 }
 
 interface VisitHistoryProps {
-  benhnhan_id: string; // Đây là UUID (string)
+  benhnhan_id: string;
   onSelectVisit: (visitId: string) => void;
 }
 
 const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit }) => {
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (benhnhan_id) {
-      fetchVisitHistory();
-    } else {
-      setVisits([]); // Xóa danh sách nếu không có ID
-    }
-  }, [benhnhan_id]);
-
-  const fetchVisitHistory = async () => {
-    // SỬA LỖI TẠI ĐÂY: Bỏ parseInt() vì benhnhan_id là UUID (string)
+  // Dùng useCallback để hàm không bị khởi tạo lại gây loop useEffect
+  const fetchVisitHistory = useCallback(async () => {
+    if (!benhnhan_id) return;
+    
+    setLoading(true);
     const { data, error } = await supabase
       .from('khambenh')
       .select('id, ngay_kham, trieu_chung, chan_doan, so_ngay_toa')
@@ -43,12 +40,16 @@ const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit 
       .order('ngay_kham', { ascending: false });
 
     if (error) {
-      console.error('Error fetching visit history:', error.message);
-      return;
+      console.error('Lỗi lấy lịch sử:', error.message);
+    } else {
+      setVisits(data || []);
     }
+    setLoading(false);
+  }, [benhnhan_id]);
 
-    setVisits(data || []);
-  };
+  useEffect(() => {
+    fetchVisitHistory();
+  }, [fetchVisitHistory]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -57,10 +58,12 @@ const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit 
 
   if (!benhnhan_id) return null;
 
+  if (loading) return <Typography sx={{ p: 2, textAlign: 'center' }}>Đang tải...</Typography>;
+
   if (visits.length === 0) {
     return (
       <Typography variant="body2" color="textSecondary" sx={{ p: 2, textAlign: 'center' }}>
-        Chưa có lịch sử khám bệnh cho BN này
+        Chưa có lịch sử khám bệnh
       </Typography>
     );
   }
@@ -71,7 +74,7 @@ const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit 
         <React.Fragment key={visit.id}>
           <ListItem disablePadding>
             <ListItemButton 
-              onClick={() => onSelectVisit(visit.id.toString())}
+              onClick={() => onSelectVisit(visit.id)} // Không cần toString() nữa
               sx={{ 
                 borderLeft: '4px solid transparent',
                 '&:hover': { 
@@ -93,7 +96,7 @@ const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit 
                 }
                 secondary={
                   <Box sx={{ mt: 0.5 }}>
-                    <Typography variant="body2" color="textPrimary" sx={{ fontWeight: 500 }}>
+                    <Typography variant="body2" color="textPrimary" sx={{ fontWeight: 500, display: 'block' }}>
                       CĐ: {visit.chan_doan || "Chưa có chẩn đoán"}
                     </Typography>
                     <Typography 
