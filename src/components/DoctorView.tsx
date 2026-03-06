@@ -1,4 +1,4 @@
-// DoctorView.tsx - Đã sửa lỗi Grid để build Netlify thành công
+// DoctorView.tsx - Cập nhật hiển thị hồ sơ bệnh nhân đầy đủ
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Topbar from "./Topbar";
@@ -15,10 +15,12 @@ import {
   Paper,
   Grid,
   IconButton,
+  Divider
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
 
+// Định nghĩa Interface KhamBenh bao gồm cả thông tin hành chính để hiển thị
 interface KhamBenh {
   benhnhan_id: string;
   bacsi_id: string;
@@ -26,12 +28,21 @@ interface KhamBenh {
   trieu_chung: string;
   chan_doan: string;
   so_ngay_toa: number;
+  // Các trường bổ sung để hiển thị hồ sơ đầy đủ
+  ho_ten?: string;
+  tuoi_display?: string;
+  can_nang?: string | number;
+  dia_chi?: string;
+  so_dien_thoai?: string;
 }
 
 const sectionTitleSx = {
   fontFamily: "Roboto, Helvetica, Arial, sans-serif",
-  fontSize: "1.25rem",
+  fontSize: "1.1rem",
   fontWeight: 700 as const,
+  color: "#1976d2",
+  textTransform: "uppercase" as const,
+  mb: 1
 };
 
 const DoctorView: React.FC = () => {
@@ -53,14 +64,12 @@ const DoctorView: React.FC = () => {
   };
   const toggleDrawer = () => setDrawerOpen(!drawerOpen);
 
-  const rowHeight = 48 * 0.7225;
-  const numberOfRows = 10;
-  const toaThuocHeight = rowHeight * numberOfRows + 48;
+  const toaThuocHeight = (48 * 0.7225) * 10 + 48;
 
   return (
-    <Box>
+    <Box sx={{ bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       <Topbar />
-      <Box sx={{ display: "flex", height: "100vh", mt: 8 }}>
+      <Box sx={{ display: "flex", height: "calc(100vh - 64px)", mt: 8 }}>
         {drawerOpen && (
           <Box
             sx={{
@@ -69,6 +78,7 @@ const DoctorView: React.FC = () => {
               flexDirection: "column",
               bgcolor: "background.paper",
               boxShadow: 1,
+              zIndex: 1200
             }}
           >
             <Sidebar role="doctor" />
@@ -87,84 +97,90 @@ const DoctorView: React.FC = () => {
           onClick={toggleDrawer}
           sx={{
             position: "fixed",
-            top: 80,
+            top: 72,
             left: drawerOpen ? 240 : 0,
             zIndex: 1300,
+            bgcolor: "white",
+            boxShadow: 1,
+            "&:hover": { bgcolor: "#e3f2fd" }
           }}
         >
           <MenuIcon />
         </IconButton>
 
-        <Box sx={{ flex: 1, p: 2, display: "flex", gap: 2 }}>
-          {/* Cột queue + lịch sử khám */}
-          <Box
-            sx={{
-              width: "25%",
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            <Paper sx={{ flex: "0 0 60%", overflow: "hidden" }}>
+        <Box sx={{ flex: 1, p: 2, display: "flex", gap: 2, overflow: "hidden" }}>
+          {/* CỘT TRÁI: DANH SÁCH CHỜ & LỊCH SỬ */}
+          <Box sx={{ width: "300px", display: "flex", flexDirection: "column", gap: 2 }}>
+            <Paper sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <DanhSachChoGrid
-                onSelect={(bn: any) =>
+                onSelect={(bn: any) => {
                   setKhambenh((prev) => ({
                     ...prev,
-                    benhnhan_id: bn.benhnhan_id.toString(),
-                  }))
-                }
+                    benhnhan_id: bn.benhnhan_id,
+                    ho_ten: bn.ho_ten,
+                    tuoi_display: bn.thang_tuoi_display,
+                    can_nang: bn.can_nang,
+                    dia_chi: bn.dia_chi,
+                    so_dien_thoai: bn.so_dien_thoai
+                  }));
+                  // Reset lịch sử toa khi chọn BN mới
+                  setSelectedVisitId(null);
+                }}
                 selectedId={khambenh.benhnhan_id}
               />
             </Paper>
 
-            <Paper sx={{ flex: "0 0 40%", p: 1, overflowY: "auto" }}>
-              <Typography sx={sectionTitleSx} gutterBottom>
-                Lịch sử khám
-              </Typography>
+            <Paper sx={{ height: "35%", p: 1, overflowY: "auto" }}>
+              <Typography sx={sectionTitleSx}>Lịch sử khám</Typography>
+              <Divider sx={{ mb: 1 }} />
               {khambenh.benhnhan_id ? (
                 <VisitHistory
                   benhnhan_id={khambenh.benhnhan_id}
                   onSelectVisit={setSelectedVisitId}
                 />
               ) : (
-                <Typography variant="body2" color="textSecondary">
+                <Typography variant="body2" color="textSecondary" align="center" sx={{ mt: 2 }}>
                   Chọn bệnh nhân để xem lịch sử
                 </Typography>
               )}
             </Paper>
           </Box>
 
-          {/* Cột info, form khám mới, toa */}
-          <Box
-            sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}
-          >
-            {/* Thông tin bệnh nhân */}
-            <Paper sx={{ p: 2 }}>
-              <Typography sx={sectionTitleSx} gutterBottom>
-                Thông tin bệnh nhân
-              </Typography>
-              
-              {/* Sửa lỗi Grid tại đây bằng cách ép kiểu an toàn cho Next.js Build */}
-              <Grid container spacing={1}>
-                <Grid {...({ item: true, xs: 6 } as any)}>
-                  <strong>BN ID:</strong> {khambenh.benhnhan_id || "-"}
+          {/* CỘT PHẢI: CHI TIẾT KHÁM & TOA THUỐC */}
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
+            
+            {/* 1. HỒ SƠ HÀNH CHÍNH BỆNH NHÂN */}
+            <Paper sx={{ p: 2, borderLeft: "5px solid #1976d2" }}>
+              <Typography sx={sectionTitleSx}>Hồ sơ bệnh nhân</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="caption" color="textSecondary">Họ và tên</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 700, color: "#d32f2f" }}>
+                    {khambenh.ho_ten ? khambenh.ho_ten.toUpperCase() : "---"}
+                  </Typography>
                 </Grid>
-                <Grid {...({ item: true, xs: 6 } as any)}>
-                  <strong>Ngày khám:</strong> {khambenh.ngay_kham}
+                <Grid item xs={6} md={2}>
+                  <Typography variant="caption" color="textSecondary">Tuổi</Typography>
+                  <Typography variant="body1">{khambenh.tuoi_display || "---"}</Typography>
                 </Grid>
-                <Grid {...({ item: true, xs: 6 } as any)}>
-                  <strong>Triệu chứng:</strong> {khambenh.trieu_chung || "-"}
+                <Grid item xs={6} md={2}>
+                  <Typography variant="caption" color="textSecondary">Cân nặng</Typography>
+                  <Typography variant="body1">{khambenh.can_nang ? `${khambenh.can_nang} kg` : "---"}</Typography>
                 </Grid>
-                <Grid {...({ item: true, xs: 6 } as any)}>
-                  <strong>Chẩn đoán:</strong> {khambenh.chan_doan || "-"}
+                <Grid item xs={12} md={4}>
+                  <Typography variant="caption" color="textSecondary">Số điện thoại</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{khambenh.so_dien_thoai || "---"}</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="textSecondary">Địa chỉ</Typography>
+                  <Typography variant="body2">{khambenh.dia_chi || "---"}</Typography>
                 </Grid>
               </Grid>
             </Paper>
 
-            {/* Form khám mới */}
-            <Paper
-              sx={{ px: 2, pt: 2, pb: 1, flex: "0 0 auto", overflowY: "auto" }}
-            >
+            {/* 2. FORM KHÁM BỆNH MỚI */}
+            <Paper sx={{ p: 2 }}>
+              <Typography sx={sectionTitleSx}>Khám bệnh & Chẩn đoán</Typography>
               <KhamBenhDoctor
                 setKhambenhID={setKhambenhID}
                 setKhambenh={setKhambenh}
@@ -172,46 +188,28 @@ const DoctorView: React.FC = () => {
               />
             </Paper>
 
-            {/* Lịch sử toa thuốc */}
-            <Paper
-              sx={{
-                px: 2,
-                pt: 1,
-                pb: 2,
-                flex: 1,
-                minHeight: toaThuocHeight,
-                maxHeight: toaThuocHeight,
-                overflowY: "auto",
-              }}
-            >
-              <Typography sx={sectionTitleSx}>Toa thuốc</Typography>
-              {selectedVisitId ? (
+            {/* 3. LỊCH SỬ TOA THUỐC CŨ (Khi click từ VisitHistory) */}
+            {selectedVisitId && (
+              <Paper sx={{ p: 2, bgcolor: "#fffde7" }}>
+                <Typography sx={sectionTitleSx} color="secondary">Chi tiết toa thuốc cũ</Typography>
                 <PrescriptionHistory visitId={selectedVisitId} />
-              ) : (
-                <Typography variant="body2" color="textSecondary">
-                  Chọn một lần khám để xem toa thuốc
-                </Typography>
-              )}
-            </Paper>
+              </Paper>
+            )}
 
-            {/* Toa thuốc mới */}
-            <Paper sx={{ p: 2 }}>
-              <Typography sx={sectionTitleSx} gutterBottom>
-                Toa thuốc mới
-              </Typography>
+            {/* 4. TOA THUỐC MỚI */}
+            <Paper sx={{ p: 2, minHeight: 200 }}>
+              <Typography sx={sectionTitleSx}>Toa thuốc mới</Typography>
               {khambenhID ? (
                 <>
                   <ToaThuocDoctor khambenhID={khambenhID} />
-                  <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-                    <Button variant="contained" color="primary">
-                      Lưu toa
-                    </Button>
-                    <Button variant="outlined">In toa</Button>
+                  <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
+                    <Button variant="contained" size="large" sx={{ px: 4 }}>Lưu toa</Button>
+                    <Button variant="outlined" size="large">In toa thuốc</Button>
                   </Box>
                 </>
               ) : (
-                <Typography variant="body2" color="textSecondary">
-                  Lưu lần khám mới để tạo toa
+                <Typography variant="body2" color="textSecondary" align="center" sx={{ py: 4, border: "1px dashed #ccc" }}>
+                  Bác sĩ cần "Lưu kết quả khám" ở trên để kê toa thuốc
                 </Typography>
               )}
             </Paper>
