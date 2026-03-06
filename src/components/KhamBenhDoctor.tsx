@@ -1,4 +1,4 @@
-// KhamBenhDoctor.tsx - Restored from original system (Grid fix for Netlify)
+// KhamBenhDoctor.tsx - Đã sửa lỗi UUID và ép kiểu Grid
 import React, { useState } from 'react';
 import { Box, TextField, Button, Grid, Typography } from '@mui/material';
 import { supabase } from '@/lib/supabase';
@@ -33,19 +33,26 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
   };
 
   const handleSave = async () => {
-    if (!khambenh.benhnhan_id || !khambenh.trieu_chung || !khambenh.chan_doan) {
-      alert('Vui lòng điền đầy đủ thông tin bệnh nhân, triệu chứng và chẩn đoán');
+    // Kiểm tra dữ liệu đầu vào
+    if (!khambenh.benhnhan_id) {
+      alert('Vui lòng chọn bệnh nhân từ danh sách chờ trước!');
+      return;
+    }
+    if (!khambenh.trieu_chung || !khambenh.chan_doan) {
+      alert('Vui lòng điền đầy đủ triệu chứng và chẩn đoán');
       return;
     }
 
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase
+      // 1. Lưu vào bảng khambenh
+      // LƯU Ý: KHÔNG dùng parseInt cho benhnhan_id vì nó là UUID (string)
+      const { data, error: insertError } = await supabase
         .from('khambenh')
         .insert([{
-          benhnhan_id: parseInt(khambenh.benhnhan_id),
-          bacsi_id: 1, // Default doctor ID
+          benhnhan_id: khambenh.benhnhan_id, // Truyền trực tiếp string UUID
+          bacsi_id: "00000000-0000-0000-0000-000000000000", // Thay bằng UUID bác sĩ thật nếu có, hoặc để string hợp lệ
           ngay_kham: khambenh.ngay_kham,
           trieu_chung: khambenh.trieu_chung,
           chan_doan: khambenh.chan_doan,
@@ -54,20 +61,26 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
         .select('id')
         .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
+      // Lưu lại ID của lượt khám vừa tạo để làm toa thuốc
       setKhambenhID(data.id.toString());
       
-      // Remove patient from waiting list
-      await supabase
+      // 2. Xóa bệnh nhân khỏi danh sách chờ sau khi đã khám xong
+      // LƯU Ý: KHÔNG dùng parseInt tại đây
+      const { error: deleteError } = await supabase
         .from('danhsachcho')
         .delete()
-        .eq('benhnhan_id', parseInt(khambenh.benhnhan_id));
+        .eq('benhnhan_id', khambenh.benhnhan_id);
+
+      if (deleteError) {
+        console.warn('Cảnh báo: Không thể xóa khỏi danh sách chờ:', deleteError.message);
+      }
 
       alert('Đã lưu thông tin khám bệnh thành công!');
-    } catch (error) {
-      console.error('Error saving examination:', error);
-      alert('Có lỗi xảy ra khi lưu thông tin khám bệnh');
+    } catch (error: any) {
+      console.error('Lỗi khi lưu khám bệnh:', error);
+      alert('Lỗi: ' + (error.message || 'Không thể lưu thông tin'));
     } finally {
       setIsLoading(false);
     }
@@ -75,16 +88,16 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>
-        Form khám bệnh
+      <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 'bold', mb: 2 }}>
+        Nội dung thăm khám
       </Typography>
       
       <Grid container spacing={2}>
-        {/* Sửa lỗi Grid item bằng cách ép kiểu an toàn cho Next.js Build */}
-        <Grid {...({ item: true, xs: 12, sm: 6 } as any)}>
+        <Grid {...({ item: true, xs: 12, md: 6 } as any)}>
           <TextField
             fullWidth
             label="Triệu chứng"
+            placeholder="Nhập triệu chứng lâm sàng..."
             multiline
             rows={3}
             value={khambenh.trieu_chung}
@@ -92,10 +105,11 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid {...({ item: true, xs: 12, sm: 6 } as any)}>
+        <Grid {...({ item: true, xs: 12, md: 6 } as any)}>
           <TextField
             fullWidth
             label="Chẩn đoán"
+            placeholder="Nhập chẩn đoán bệnh..."
             multiline
             rows={3}
             value={khambenh.chan_doan}
@@ -103,7 +117,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid {...({ item: true, xs: 12, sm: 6 } as any)}>
+        <Grid {...({ item: true, xs: 12, sm: 6, md: 4 } as any)}>
           <TextField
             fullWidth
             label="Ngày khám"
@@ -114,24 +128,27 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid {...({ item: true, xs: 12, sm: 6 } as any)}>
+        <Grid {...({ item: true, xs: 12, sm: 6, md: 4 } as any)}>
           <TextField
             fullWidth
-            label="Số ngày toa"
+            label="Số ngày thuốc"
             type="number"
             value={khambenh.so_ngay_toa}
             onChange={(e) => handleInputChange('so_ngay_toa', parseInt(e.target.value) || 0)}
           />
         </Grid>
         
-        <Grid {...({ item: true, xs: 12 } as any)}>
+        <Grid {...({ item: true, xs: 12, md: 4 } as any)} sx={{ display: 'flex', alignItems: 'center' }}>
           <Button
+            fullWidth
             variant="contained"
-            color="primary"
+            color="success"
+            size="large"
             onClick={handleSave}
             disabled={isLoading || !khambenh.benhnhan_id}
+            sx={{ height: '56px', fontWeight: 'bold' }}
           >
-            {isLoading ? 'Đang lưu...' : 'Lưu thông tin khám'}
+            {isLoading ? 'Đang lưu...' : 'Lưu kết quả khám'}
           </Button>
         </Grid>
       </Grid>
