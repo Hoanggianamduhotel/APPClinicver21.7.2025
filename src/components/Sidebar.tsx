@@ -1,6 +1,12 @@
-// Sidebar.tsx - Restored from original system
 import React from 'react';
-import { List, ListItem, ListItemIcon, ListItemText, Box } from '@mui/material';
+import { 
+  List, 
+  ListItem, 
+  ListItemButton, 
+  ListItemIcon, 
+  ListItemText, 
+  Box 
+} from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -24,11 +30,13 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
     <Box sx={{ width: 240, pt: 2 }}>
       <List>
         {menuItems.map((item, index) => (
-          <ListItem button key={index}>
-            <ListItemIcon>
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText primary={item.text} />
+          <ListItem key={index} disablePadding>
+            <ListItemButton>
+              <ListItemIcon>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
           </ListItem>
         ))}
       </List>
