@@ -1,4 +1,4 @@
-// KhamBenhDoctor.tsx - Restored from original system
+// KhamBenhDoctor.tsx - Restored from original system (Grid fix for Netlify)
 import React, { useState } from 'react';
 import { Box, TextField, Button, Grid, Typography } from '@mui/material';
 import { supabase } from '@/lib/supabase';
@@ -80,7 +80,8 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
       </Typography>
       
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        {/* Sửa lỗi Grid item bằng cách ép kiểu an toàn cho Next.js Build */}
+        <Grid {...({ item: true, xs: 12, sm: 6 } as any)}>
           <TextField
             fullWidth
             label="Triệu chứng"
@@ -91,7 +92,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid item xs={12} sm={6}>
+        <Grid {...({ item: true, xs: 12, sm: 6 } as any)}>
           <TextField
             fullWidth
             label="Chẩn đoán"
@@ -102,7 +103,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid item xs={12} sm={6}>
+        <Grid {...({ item: true, xs: 12, sm: 6 } as any)}>
           <TextField
             fullWidth
             label="Ngày khám"
@@ -113,7 +114,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid item xs={12} sm={6}>
+        <Grid {...({ item: true, xs: 12, sm: 6 } as any)}>
           <TextField
             fullWidth
             label="Số ngày toa"
@@ -123,7 +124,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           />
         </Grid>
         
-        <Grid item xs={12}>
+        <Grid {...({ item: true, xs: 12 } as any)}>
           <Button
             variant="contained"
             color="primary"
