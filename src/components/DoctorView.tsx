@@ -1,4 +1,4 @@
-// DoctorView.tsx - Restored from original Vite+Express system
+// DoctorView.tsx - Đã sửa lỗi Grid để build Netlify thành công
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Topbar from "./Topbar";
@@ -71,7 +71,7 @@ const DoctorView: React.FC = () => {
               boxShadow: 1,
             }}
           >
-           <Sidebar role="doctor" />
+            <Sidebar role="doctor" />
             <Box sx={{ flexGrow: 1 }} />
             <Button
               startIcon={<LogoutIcon />}
@@ -105,7 +105,6 @@ const DoctorView: React.FC = () => {
               gap: 2,
             }}
           >
-            {/* Danh sách chờ - KHÔNG padding để sát với viền trái/phải */}
             <Paper sx={{ flex: "0 0 60%", overflow: "hidden" }}>
               <DanhSachChoGrid
                 onSelect={(bn: any) =>
@@ -144,17 +143,19 @@ const DoctorView: React.FC = () => {
               <Typography sx={sectionTitleSx} gutterBottom>
                 Thông tin bệnh nhân
               </Typography>
+              
+              {/* Sửa lỗi Grid tại đây bằng cách ép kiểu an toàn cho Next.js Build */}
               <Grid container spacing={1}>
-                <Grid item xs={6}>
+                <Grid {...({ item: true, xs: 6 } as any)}>
                   <strong>BN ID:</strong> {khambenh.benhnhan_id || "-"}
                 </Grid>
-                <Grid item xs={6}>
+                <Grid {...({ item: true, xs: 6 } as any)}>
                   <strong>Ngày khám:</strong> {khambenh.ngay_kham}
                 </Grid>
-                <Grid item xs={6}>
+                <Grid {...({ item: true, xs: 6 } as any)}>
                   <strong>Triệu chứng:</strong> {khambenh.trieu_chung || "-"}
                 </Grid>
-                <Grid item xs={6}>
+                <Grid {...({ item: true, xs: 6 } as any)}>
                   <strong>Chẩn đoán:</strong> {khambenh.chan_doan || "-"}
                 </Grid>
               </Grid>
