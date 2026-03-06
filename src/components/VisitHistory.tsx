@@ -1,6 +1,14 @@
-// VisitHistory.tsx - Patient visit history component
+// VisitHistory.tsx - Đã sửa lỗi deploy (MUI v5+)
 import React, { useState, useEffect } from 'react';
-import { List, ListItem, ListItemText, Typography, Box, Divider } from '@mui/material';
+import { 
+  List, 
+  ListItem, 
+  ListItemButton, // Thêm import ListItemButton
+  ListItemText, 
+  Typography, 
+  Box, 
+  Divider 
+} from '@mui/material';
 import { supabase } from '@/lib/supabase';
 
 interface Visit {
@@ -46,7 +54,7 @@ const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit 
 
   if (visits.length === 0) {
     return (
-      <Typography variant="body2" color="textSecondary">
+      <Typography variant="body2" color="textSecondary" sx={{ p: 2 }}>
         Chưa có lịch sử khám bệnh
       </Typography>
     );
@@ -56,34 +64,35 @@ const VisitHistory: React.FC<VisitHistoryProps> = ({ benhnhan_id, onSelectVisit 
     <List dense>
       {visits.map((visit, index) => (
         <React.Fragment key={visit.id}>
-          <ListItem 
-            button 
-            onClick={() => onSelectVisit(visit.id.toString())}
-            sx={{ 
-              cursor: 'pointer',
-              '&:hover': { backgroundColor: '#f5f5f5' }
-            }}
-          >
-            <ListItemText
-              primary={
-                <Box>
-                  <Typography variant="subtitle2" color="primary">
-                    {formatDate(visit.ngay_kham)}
+          {/* Thay ListItem button bằng ListItem + ListItemButton */}
+          <ListItem disablePadding>
+            <ListItemButton 
+              onClick={() => onSelectVisit(visit.id.toString())}
+              sx={{ 
+                '&:hover': { backgroundColor: '#f5f5f5' }
+              }}
+            >
+              <ListItemText
+                primary={
+                  <Box>
+                    <Typography variant="subtitle2" color="primary">
+                      {formatDate(visit.ngay_kham)}
+                    </Typography>
+                    <Typography variant="body2" color="textPrimary">
+                      {visit.chan_doan || "Chưa có chẩn đoán"}
+                    </Typography>
+                  </Box>
+                }
+                secondary={
+                  <Typography variant="caption" color="textSecondary" component="span">
+                    {visit.trieu_chung && visit.trieu_chung.length > 50 
+                      ? visit.trieu_chung.substring(0, 50) + '...'
+                      : visit.trieu_chung || "Không có triệu chứng ghi nhận"
+                    }
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {visit.chan_doan}
-                  </Typography>
-                </Box>
-              }
-              secondary={
-                <Typography variant="caption" color="textSecondary">
-                  {visit.trieu_chung.length > 50 
-                    ? visit.trieu_chung.substring(0, 50) + '...'
-                    : visit.trieu_chung
-                  }
-                </Typography>
-              }
-            />
+                }
+              />
+            </ListItemButton>
           </ListItem>
           {index < visits.length - 1 && <Divider />}
         </React.Fragment>
