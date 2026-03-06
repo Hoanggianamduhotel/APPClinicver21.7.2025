@@ -1,4 +1,4 @@
-// ReceptionistView.tsx - Restored from original system
+// ReceptionistView.tsx - Đã sửa lỗi deploy
 import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
@@ -10,6 +10,7 @@ import {
   Drawer,
   List,
   ListItem,
+  ListItemButton, // Thêm ListItemButton
   ListItemIcon,
   ListItemText,
   Button,
@@ -89,12 +90,9 @@ const ReceptionistView: React.FC = () => {
     window.location.reload();
   };
 
-  // Hàm định dạng hiển thị tuổi theo tháng
   const hienThiTuoiTheoThang = (thangTuoi: number) => {
-    // Nếu tháng tuổi > 48 tháng, đổi sang hiển thị tuổi
     if (thangTuoi > 48) {
       const tuoi = thangTuoi / 12;
-      // Làm tròn xuống 0.5
       const tuoiLamTron = Math.floor(tuoi * 2) / 2;
       return `${tuoiLamTron} tuổi`;
     } else {
@@ -103,12 +101,9 @@ const ReceptionistView: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    // Kiểm tra bệnh nhân đã tồn tại
     const { data: existingPatient, error: findError } = await supabase
       .from("benhnhan")
-      .select(
-        "id, ho_ten, ngay_sinh, dia_chi, so_dien_thoai, can_nang, thang_tuoi"
-      )
+      .select("id, ho_ten, ngay_sinh, dia_chi, so_dien_thoai, can_nang, thang_tuoi")
       .eq("ho_ten", benhNhan.ho_ten)
       .eq("ngay_sinh", benhNhan.ngay_sinh);
 
@@ -125,7 +120,6 @@ const ReceptionistView: React.FC = () => {
       patientId = patient.id;
       thangTuoi = patient.thang_tuoi;
 
-      // Kiểm tra danh sách chờ
       const { data: inQueue, error: qErr } = await supabase
         .from("danhsachcho")
         .select("benhnhan_id")
@@ -139,7 +133,6 @@ const ReceptionistView: React.FC = () => {
         return;
       }
     } else {
-      // Thêm mới bệnh nhân
       const { data: newP, error: insErr } = await supabase
         .from("benhnhan")
         .insert([
@@ -161,7 +154,6 @@ const ReceptionistView: React.FC = () => {
       thangTuoi = newP.thang_tuoi;
     }
 
-    // Thêm vào danh sách chờ
     const { error: dsError } = await supabase.from("danhsachcho").insert([
       {
         benhnhan_id: patientId,
@@ -178,7 +170,6 @@ const ReceptionistView: React.FC = () => {
       return;
     }
 
-    // Làm mới và reset form
     fetchDanhSachCho();
     setBenhNhan({
       ho_ten: "",
@@ -243,6 +234,7 @@ const ReceptionistView: React.FC = () => {
         component="nav"
         sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
       >
+        {/* Mobile Drawer */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -254,15 +246,16 @@ const ReceptionistView: React.FC = () => {
           }}
         >
           <List>
-            <ListItem button>
+            <ListItemButton>
               <ListItemIcon>
                 <PeopleIcon />
               </ListItemIcon>
               <ListItemText primary="Bệnh nhân" />
-            </ListItem>
+            </ListItemButton>
           </List>
         </Drawer>
 
+        {/* Desktop Drawer */}
         <Drawer
           variant="permanent"
           open
@@ -271,13 +264,14 @@ const ReceptionistView: React.FC = () => {
             "& .MuiDrawer-paper": { width: drawerWidth },
           }}
         >
+          <Toolbar /> {/* Để nội dung không bị AppBar che */}
           <List>
-            <ListItem button>
+            <ListItemButton>
               <ListItemIcon>
                 <PeopleIcon />
               </ListItemIcon>
               <ListItemText primary="Bệnh nhân" />
-            </ListItem>
+            </ListItemButton>
           </List>
         </Drawer>
       </Box>
@@ -327,7 +321,7 @@ const ReceptionistView: React.FC = () => {
               name="ho_ten"
               value={benhNhan.ho_ten}
               onChange={handleChange}
-              onKeyPress={(e) => handleEnterKey(e, ngaySinhRef)}
+              onKeyPress={(e: any) => handleEnterKey(e, ngaySinhRef)}
               inputRef={hoTenRef}
             />
             <TextField
@@ -338,7 +332,7 @@ const ReceptionistView: React.FC = () => {
               name="ngay_sinh"
               value={benhNhan.ngay_sinh}
               onChange={handleChange}
-              onKeyPress={(e) => handleEnterKey(e, diaChiRef)}
+              onKeyPress={(e: any) => handleEnterKey(e, diaChiRef)}
               inputRef={ngaySinhRef}
               InputLabelProps={{ shrink: true }}
             />
@@ -349,7 +343,7 @@ const ReceptionistView: React.FC = () => {
               name="dia_chi"
               value={benhNhan.dia_chi}
               onChange={handleChange}
-              onKeyPress={(e) => handleEnterKey(e, soDienThoaiRef)}
+              onKeyPress={(e: any) => handleEnterKey(e, soDienThoaiRef)}
               inputRef={diaChiRef}
             />
             <TextField
@@ -359,7 +353,7 @@ const ReceptionistView: React.FC = () => {
               name="so_dien_thoai"
               value={benhNhan.so_dien_thoai}
               onChange={handleChange}
-              onKeyPress={(e) => handleEnterKey(e, canNangRef)}
+              onKeyPress={(e: any) => handleEnterKey(e, canNangRef)}
               inputRef={soDienThoaiRef}
             />
             <TextField
@@ -369,7 +363,7 @@ const ReceptionistView: React.FC = () => {
               name="can_nang"
               value={benhNhan.can_nang}
               onChange={handleChange}
-              onKeyPress={(e) => handleEnterKey(e)}
+              onKeyPress={(e: any) => handleEnterKey(e)}
               inputRef={canNangRef}
               type="number"
             />
