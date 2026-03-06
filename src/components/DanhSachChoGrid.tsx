@@ -1,23 +1,25 @@
+// DanhSachChoGrid.tsx - Tối ưu hiển thị 2 cột & Truyền dữ liệu đầy đủ
 import React, { useState, useEffect } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box, Typography, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { supabase } from '@/lib/supabase';
 
-// 1. Sửa Interface để khớp với SQL (benhnhan_id là string/uuid)
+// Định nghĩa Interface khớp với cấu trúc bảng danhsachcho của bạn
 interface Patient {
-  id: number; // Cột serial trong SQL
-  benhnhan_id: string; // UUID từ bảng benhnhan
+  id: number;
+  benhnhan_id: string; // UUID
   ho_ten: string;
   ngay_sinh: string;
   thang_tuoi: number;
-  can_nang: string;
+  can_nang: number;
   dia_chi: string;
   so_dien_thoai: string;
+  gioi_tinh: string;
 }
 
 interface DanhSachChoGridProps {
-  onSelect: (patient: Patient) => void;
+  onSelect: (patient: any) => void;
   selectedId: string;
 }
 
@@ -29,11 +31,11 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
   }, []);
 
   const fetchWaitingList = async () => {
-    // 2. Sửa order('created_at') thành order('id') hoặc bỏ order nếu không cần
+    // Truy vấn đầy đủ các cột cần thiết để hiển thị bên DoctorView
     const { data, error } = await supabase
       .from('danhsachcho')
-      .select('id, benhnhan_id, ho_ten, ngay_sinh, thang_tuoi, can_nang, dia_chi, so_dien_thoai')
-      .order('id', { ascending: true }); // Sắp xếp theo ID tự tăng
+      .select('id, benhnhan_id, ho_ten, ngay_sinh, thang_tuoi, can_nang, dia_chi, so_dien_thoai, gioi_tinh')
+      .order('id', { ascending: true });
     
     if (error) {
       console.error('Error fetching waiting list:', error);
@@ -43,7 +45,6 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
     setPatients(data || []);
   };
 
-  // 3. Sửa kiểu dữ liệu tham số thành string cho UUID
   const handleRemoveFromQueue = async (uuid: string) => {
     const { error } = await supabase
       .from('danhsachcho')
@@ -58,17 +59,28 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
     fetchWaitingList();
   };
 
+  // Logic tính tuổi chuẩn y khoa
   const hienThiTuoiTheoThang = (thangTuoi: number | null | undefined) => {
     if (thangTuoi === null || thangTuoi === undefined) return "-";
-    if (thangTuoi < 24) return `${thangTuoi} tháng`;
+    if (thangTuoi < 24) return `${thangTuoi} th`;
     
     const nam = Math.floor(thangTuoi / 12);
     const thangLe = thangTuoi % 12;
-    return thangLe === 0 ? `${nam} tuổi` : `${nam} t ${thangLe} th`;
+    return thangLe === 0 ? `${nam} tuổi` : `${nam}t ${thangLe}th`;
   };
 
+  // Cấu hình 2 cột chính: Họ tên và Tuổi
   const columns: GridColDef[] = [
-    { field: 'ho_ten', headerName: 'Họ tên', flex: 1 },
+    { 
+      field: 'ho_ten', 
+      headerName: 'Họ tên', 
+      flex: 1.3,
+      renderCell: (params) => (
+        <Typography variant="body2" sx={{ fontWeight: 500, textTransform: 'capitalize' }}>
+          {params.value}
+        </Typography>
+      )
+    },
     { 
       field: 'thang_tuoi_display', 
       headerName: 'Tuổi', 
@@ -76,17 +88,10 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
       align: 'center',
       headerAlign: 'center',
     },
-    { 
-      field: 'can_nang', 
-      headerName: 'Cân nặng', 
-      flex: 0.8,
-      align: 'center',
-      headerAlign: 'center',
-    },
     {
       field: 'actions',
       headerName: '',
-      width: 50,
+      width: 40,
       sortable: false,
       renderCell: (params) => (
         <IconButton
@@ -95,6 +100,7 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
             e.stopPropagation();
             handleRemoveFromQueue(params.row.benhnhan_id);
           }}
+          sx={{ color: '#d32f2f' }}
         >
           <DeleteIcon fontSize="small" />
         </IconButton>
@@ -103,34 +109,34 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
   ];
 
   return (
-    <Box sx={{ height: '100%', width: '100%' }}>
-      <Typography variant="h6" sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
-        Danh sách chờ ({patients.length})
-      </Typography>
+    <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ p: 1.5, bgcolor: '#1976d2', color: 'white', display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+          DANH SÁCH CHỜ
+        </Typography>
+        <Typography variant="subtitle1">
+          {patients.length}
+        </Typography>
+      </Box>
+
       <DataGrid
-        rows={patients.map((patient) => ({
-          id: patient.id, // Sử dụng ID serial của bảng danhsachcho
-          benhnhan_id: patient.benhnhan_id,
-          ho_ten: patient.ho_ten,
-          thang_tuoi_display: hienThiTuoiTheoThang(patient.thang_tuoi),
-          can_nang: patient.can_nang ? `${patient.can_nang} kg` : '-',
-          // Giữ lại các trường gốc để onSelect hoạt động đúng
-          dia_chi: patient.dia_chi,
-          so_dien_thoai: patient.so_dien_thoai,
-          thang_tuoi: patient.thang_tuoi,
-          ngay_sinh: patient.ngay_sinh
+        rows={patients.map((p) => ({
+          ...p,
+          id: p.id, // ID chính cho DataGrid
+          thang_tuoi_display: hienThiTuoiTheoThang(p.thang_tuoi),
         }))}
         columns={columns}
-        onRowClick={(params) => onSelect(params.row as Patient)}
+        onRowClick={(params) => onSelect(params.row)} // Truyền toàn bộ object row (có địa chỉ, sđt...)
         sx={{
+          border: 'none',
           '& .MuiDataGrid-row': {
             cursor: 'pointer',
-            // Kiểm tra selectedId khớp với UUID
             backgroundColor: (params: any) => 
               params.row?.benhnhan_id === selectedId ? '#e3f2fd !important' : 'inherit',
+            '&:hover': { bgcolor: '#f5f5f5' }
           },
+          '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 'bold' },
           '& .MuiDataGrid-cell:focus': { outline: 'none' },
-          border: 'none',
         }}
         hideFooter
         disableColumnMenu
