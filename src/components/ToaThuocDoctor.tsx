@@ -6,10 +6,10 @@ import {
 import { Delete as DeleteIcon } from '@mui/icons-material';
 import { supabase } from '@/lib/supabase';
 
-const ToaThuocDoctor = ({ khambenhID }: { khambenhID: string }) => {
+// 1. Dùng 'export const' thay vì 'export default'
+export const ToaThuocDoctor = ({ khambenhID }: { khambenhID: string }) => {
   const [savedToa, setSavedToa] = useState<any[]>([]);
   const [danhMucThuoc, setDanhMucThuoc] = useState<any[]>([]);
-  const searchInputRef = useRef<any>(null);
 
   const fetchData = async () => {
     const { data: kho } = await supabase.from('thuoc').select('*');
@@ -19,7 +19,7 @@ const ToaThuocDoctor = ({ khambenhID }: { khambenhID: string }) => {
     if (daKe) setSavedToa(daKe);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [khambenhID]);
 
   const handleAdd = async (thuoc: any) => {
     if (!thuoc) return;
@@ -49,7 +49,6 @@ const ToaThuocDoctor = ({ khambenhID }: { khambenhID: string }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {/* DÒNG TÌM KIẾM MỚI (NẰM NGAY HÀNG ĐẦU CỦA BẢNG) */}
           <TableRow sx={{ bgcolor: '#e3f2fd' }}>
             <TableCell colSpan={9}>
               <Autocomplete
@@ -63,7 +62,6 @@ const ToaThuocDoctor = ({ khambenhID }: { khambenhID: string }) => {
             </TableCell>
           </TableRow>
 
-          {/* CÁC DÒNG THUỐC ĐÃ KÊ */}
           {savedToa.map((item) => (
             <TableRow key={item.id}>
               <TableCell sx={{ fontWeight: 'bold' }}>{item.thuoc?.ten_thuoc}</TableCell>
@@ -75,7 +73,7 @@ const ToaThuocDoctor = ({ khambenhID }: { khambenhID: string }) => {
               <TableCell>{item.thanh_tien?.toLocaleString()}</TableCell>
               <TableCell><TextField size="small" variant="standard" defaultValue={item.ghi_chu} /></TableCell>
               <TableCell>
-                <IconButton color="error" size="small"><DeleteIcon /></IconButton>
+                <IconButton color="error" size="small" onClick={async () => { await supabase.from('toathuoc').delete().eq('id', item.id); fetchData(); }}><DeleteIcon /></IconButton>
               </TableCell>
             </TableRow>
           ))}
