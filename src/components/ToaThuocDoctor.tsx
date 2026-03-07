@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { Box, TextField, Button, Autocomplete, CircularProgress, Typography, IconButton } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete"; // Cần cài @mui/icons-material
+import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "@/lib/supabase"; 
 
 export interface Thuoc {
@@ -22,10 +22,10 @@ interface ToaThuocRow {
   so_luong_moi_lan: number;
   tong_so_luong: number;
   ghi_chu: string;
-  isSaved?: boolean; // Đánh dấu dòng đã lưu từ database
+  isSaved?: boolean;
 }
 
-// Component riêng cho Ghi chú để fix lỗi Telex và Space
+// --- COMPONENT GHI CHÚ (FIX LỖI TELEX & SPACE) ---
 const GhiChuInput = ({ value, onUpdate }: { value: string; onUpdate: (val: string) => void }) => {
   const [localValue, setLocalValue] = useState(value);
   useEffect(() => { setLocalValue(value); }, [value]);
@@ -50,14 +50,14 @@ export const ToaThuocDoctor: React.FC<{ khambenhID: string; onFinish?: () => voi
   const [thuocList, setThuocList] = useState<Thuoc[]>([]);
   const [loading, setLoading] = useState(false);
   const [soNgayToa, setSoNgayToa] = useState<number>(3);
-  const idCounter = useRef(Date.now()); // Dùng timestamp để id không trùng
+  const idCounter = useRef(Date.now());
 
   const [toaThuocList, setToaThuocList] = useState<ToaThuocRow[]>([{
     id: 'init', thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
     so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: 3, ghi_chu: ""
   }]);
 
-  // --- 1. HÀM LOAD LẠI TOA THUỐC ĐÃ LƯU ---
+  // Load toa thuốc cũ từ Database
   const fetchSavedToaThuoc = useCallback(async () => {
     if (!khambenhID) return;
     const { data, error } = await supabase
@@ -80,7 +80,6 @@ export const ToaThuocDoctor: React.FC<{ khambenhID: string; onFinish?: () => voi
         isSaved: true
       }));
       
-      // Gộp dòng đã lưu + 1 dòng trống mới
       setToaThuocList([...savedRows, {
         id: idCounter.current++, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
         so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: soNgayToa, ghi_chu: ""
@@ -88,9 +87,7 @@ export const ToaThuocDoctor: React.FC<{ khambenhID: string; onFinish?: () => voi
     }
   }, [khambenhID, soNgayToa]);
 
-  useEffect(() => {
-    fetchSavedToaThuoc();
-  }, [fetchSavedToaThuoc]);
+  useEffect(() => { fetchSavedToaThuoc(); }, [fetchSavedToaThuoc]);
 
   const fetchThuoc = async (term: string) => {
     if (!term.trim()) return;
@@ -117,13 +114,17 @@ export const ToaThuocDoctor: React.FC<{ khambenhID: string; onFinish?: () => voi
 
       if (field === "thuoc_id") {
         const selected = thuocList.find(t => t.id === value);
-        newRow = { ...newRow, ten_thuoc: selected?.ten_thuoc || "", don_vi: selected?.don_vi || "", duong_dung: selected?.duong_dung || "" };
+        newRow = { 
+          ...newRow, 
+          ten_thuoc: selected?.ten_thuoc || "", 
+          don_vi: selected?.don_vi || "", 
+          duong_dung: selected?.duong_dung || "" 
+        };
       }
       
       newRow.tong_so_luong = (Number(newRow.so_lan_dung) || 0) * (Number(newRow.so_luong_moi_lan) || 0) * soNgayToa;
       rows[index] = newRow;
 
-      // Chỉ thêm dòng mới nếu dòng vừa sửa là dòng cuối và đã chọn thuốc
       if (index === rows.length - 1 && newRow.thuoc_id !== "") {
         rows.push({
           id: idCounter.current++, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
@@ -134,40 +135,35 @@ export const ToaThuocDoctor: React.FC<{ khambenhID: string; onFinish?: () => voi
     });
   }, [thuocList, soNgayToa]);
 
-  // --- 2. HÀM XÓA DÒNG ---
   const handleDeleteRow = async (id: number | string) => {
-    // Nếu dòng đã lưu trong DB thì xóa trên DB
     const rowToDelete = toaThuocList.find(r => r.id === id);
     if (rowToDelete?.isSaved) {
-      const confirmDelete = window.confirm("Xóa thuốc này khỏi toa đã lưu?");
-      if (!confirmDelete) return;
+      if (!window.confirm("Xóa thuốc này khỏi toa đã lưu?")) return;
       await supabase.from("toathuoc").delete().eq("id", id);
     }
-    
-    // Cập nhật lại UI (Xóa khỏi state)
-    setToaThuocList(prev => {
-      const filtered = prev.filter(r => r.id !== id);
-      // Luôn đảm bảo có ít nhất 1 dòng trống nếu xóa hết
-      if (filtered.length === 0) {
-        return [{ id: idCounter.current++, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
-        so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: soNgayToa, ghi_chu: "" }];
-      }
-      return filtered;
-    });
+    setToaThuocList(prev => prev.filter(r => r.id !== id));
   };
 
   const columns: GridColDef[] = [
-    { field: "ten_thuoc", headerName: "Tên thuốc", flex: 2, renderCell: (p) => (
-        <Autocomplete 
-          size="small" fullWidth options={thuocList} loading={loading}
-          isOptionEqualToValue={(option, value) => option.id === value.id}
-          getOptionLabel={(o) => o.ten_thuoc || ""}
-          value={thuocList.find(t => t.id === p.row.thuoc_id) || (p.row.isSaved ? { ten_thuoc: p.row.ten_thuoc } : null)}
-          onChange={(_, v) => handleUpdateRow(p.row.id, "thuoc_id", v?.id || "")}
-          onInputChange={(_, v) => fetchThuoc(v)}
-          renderInput={(params) => <TextField {...params} variant="standard" placeholder="Tìm thuốc..." />}
-        />
-    )},
+    { field: "ten_thuoc", headerName: "Tên thuốc", flex: 2, renderCell: (p) => {
+        const selectedThuoc = thuocList.find(t => t.id === p.row.thuoc_id);
+        const savedValue = p.row.isSaved ? ({ 
+          id: p.row.thuoc_id, ten_thuoc: p.row.ten_thuoc, don_vi: p.row.don_vi, 
+          duong_dung: p.row.duong_dung, so_luong_ton: 0 
+        } as Thuoc) : null;
+
+        return (
+          <Autocomplete 
+            size="small" fullWidth options={thuocList} loading={loading}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            getOptionLabel={(o) => o.ten_thuoc || ""}
+            value={selectedThuoc || savedValue}
+            onChange={(_, v) => handleUpdateRow(p.row.id, "thuoc_id", v?.id || "")}
+            onInputChange={(_, v) => fetchThuoc(v)}
+            renderInput={(params) => <TextField {...params} variant="standard" placeholder="Tìm thuốc..." />}
+          />
+        );
+    }},
     { field: "so_lan_dung", headerName: "Lần/N", width: 60, renderCell: (p) => (
       <TextField type="number" size="small" variant="standard" value={p.row.so_lan_dung} onChange={(e) => handleUpdateRow(p.row.id, "so_lan_dung", e.target.value)} />
     )},
@@ -178,36 +174,28 @@ export const ToaThuocDoctor: React.FC<{ khambenhID: string; onFinish?: () => voi
       <Typography sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{p.row.tong_so_luong}</Typography>
     )},
     { field: "ghi_chu", headerName: "Ghi chú", flex: 1.2, renderCell: (p) => (
-        <GhiChuInput value={p.row.ghi_chu} onUpdate={(val) => handleUpdateRow(p.row.id, "ghi_chu", val)} />
+      <GhiChuInput value={p.row.ghi_chu} onUpdate={(val) => handleUpdateRow(p.row.id, "ghi_chu", val)} />
     )},
-    // --- CỘT XÓA DÒNG ---
     { field: "actions", headerName: "", width: 50, sortable: false, renderCell: (p) => (
-      <IconButton size="small" color="error" onClick={() => handleDeleteRow(p.row.id)}>
-        <DeleteIcon fontSize="inherit" />
-      </IconButton>
+      <IconButton size="small" color="error" onClick={() => handleDeleteRow(p.row.id)}><DeleteIcon fontSize="inherit" /></IconButton>
     )}
   ];
 
   const handleSave = async () => {
-    // Chỉ lấy những dòng mới (chưa có isSaved) và có thuốc_id
     const dataToInsert = toaThuocList
       .filter(row => row.thuoc_id !== "" && !row.isSaved)
       .map(row => ({
-        khambenh_id: khambenhID,
-        thuoc_id: row.thuoc_id,
-        so_lan_dung: row.so_lan_dung,
-        so_luong_moi_lan: row.so_luong_moi_lan,
-        tong_so_luong: row.tong_so_luong,
-        ghi_chu: row.ghi_chu
+        khambenh_id: khambenhID, thuoc_id: row.thuoc_id,
+        so_lan_dung: row.so_lan_dung, so_luong_moi_lan: row.so_luong_moi_lan,
+        tong_so_luong: row.tong_so_luong, ghi_chu: row.ghi_chu
       }));
 
     if (dataToInsert.length === 0) return alert("Không có thuốc mới để thêm");
-    
     const { error } = await supabase.from("toathuoc").insert(dataToInsert);
     if (error) alert("Lỗi: " + error.message);
     else {
       alert("Đã lưu toa thuốc!");
-      fetchSavedToaThuoc(); // Gọi lại API để load lại danh sách mới nhất
+      fetchSavedToaThuoc();
       if (onFinish) onFinish();
     }
   };
@@ -216,14 +204,11 @@ export const ToaThuocDoctor: React.FC<{ khambenhID: string; onFinish?: () => voi
     <Box sx={{ width: '100%', p: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
         <TextField label="Số ngày" type="number" size="small" value={soNgayToa} onChange={(e) => setSoNgayToa(Number(e.target.value))} sx={{ width: 80 }} />
-        <Typography variant="body2" color="text.secondary">Toa thuốc cho lượt khám hiện tại</Typography>
       </Box>
-      
       <DataGrid 
         autoHeight rows={toaThuocList} columns={columns} hideFooter rowHeight={45}
         sx={{ border: 'none', '& .MuiDataGrid-columnHeader': { backgroundColor: '#fafafa' } }}
       />
-
       <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
         <Button variant="contained" color="success" size="small" onClick={handleSave}>Lưu toa</Button>
         <Button variant="outlined" size="small" onClick={onPrint}>In toa</Button>
