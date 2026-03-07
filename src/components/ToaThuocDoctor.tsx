@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { Box, TextField, Button, Typography, CircularProgress, Autocomplete } from "@mui/material";
 import { supabase } from "./supabaseClient";
@@ -20,10 +20,10 @@ interface ToaThuocRow {
   so_luong_moi_lan: number;
   tong_so_luong: number;
   ghi_chu: string;
-  ton_kho: number; // Thêm để validate
+  ton_kho: number;
 }
 
-export const ToaThuocDoctorDataGrid: React.FC<Props> = ({ khambenhID, onFinish, onPrint }) => {
+export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint }) => {
   const [thuocList, setThuocList] = useState<Thuoc[]>([]);
   const [loading, setLoading] = useState(false);
   const [soNgayToa, setSoNgayToa] = useState<number>(3);
@@ -31,10 +31,9 @@ export const ToaThuocDoctorDataGrid: React.FC<Props> = ({ khambenhID, onFinish, 
 
   const [toaThuocList, setToaThuocList] = useState<ToaThuocRow[]>([{
     id: 0, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
-    so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: 1, ghi_chu: "", ton_kho: 0
+    so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: 3, ghi_chu: "", ton_kho: 0
   }]);
 
-  // Cập nhật lại tổng số lượng khi thay đổi số ngày
   useEffect(() => {
     setToaThuocList(prev => prev.map(row => ({
       ...row,
@@ -72,7 +71,6 @@ export const ToaThuocDoctorDataGrid: React.FC<Props> = ({ khambenhID, onFinish, 
         return newRow;
       });
 
-      // Tự động thêm dòng mới nếu dòng cuối đã chọn thuốc
       if (rows[rows.length - 1].thuoc_id !== "") {
         rows.push({
           id: idCounter.current++, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
@@ -81,6 +79,27 @@ export const ToaThuocDoctorDataGrid: React.FC<Props> = ({ khambenhID, onFinish, 
       }
       return rows;
     });
+  };
+
+  const handleSave = async () => {
+    const dataToInsert = toaThuocList
+      .filter(row => row.thuoc_id !== "")
+      .map(row => ({
+        khambenh_id: khambenhID,
+        thuoc_id: row.thuoc_id,
+        so_lan_dung: row.so_lan_dung,
+        so_luong_moi_lan: row.so_luong_moi_lan,
+        tong_so_luong: row.tong_so_luong,
+        ghi_chu: row.ghi_chu
+      }));
+
+    if (dataToInsert.length === 0) return alert("Chưa có thuốc để lưu");
+    const { error } = await supabase.from("toathuoc").insert(dataToInsert);
+    if (error) alert("Lỗi: " + error.message);
+    else {
+      alert("Đã lưu thành công!");
+      if (onFinish) onFinish();
+    }
   };
 
   const columns: GridColDef[] = [
@@ -109,7 +128,10 @@ export const ToaThuocDoctorDataGrid: React.FC<Props> = ({ khambenhID, onFinish, 
     <Box>
       <TextField label="Số ngày kê toa" type="number" value={soNgayToa} onChange={(e) => setSoNgayToa(+e.target.value)} sx={{ mb: 2, width: 150 }} />
       <DataGrid autoHeight rows={toaThuocList} columns={columns} hideFooter />
-      <Button variant="contained" color="success" onClick={/* logic save here */} sx={{ mt: 2 }}>Lưu toa thuốc</Button>
+      <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
+        <Button variant="contained" color="success" onClick={handleSave}>Lưu toa thuốc</Button>
+        <Button variant="contained" color="secondary" onClick={onPrint}>In toa</Button>
+      </Box>
     </Box>
   );
 };
