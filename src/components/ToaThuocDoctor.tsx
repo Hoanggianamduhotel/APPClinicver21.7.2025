@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
-import { Box, TextField, Button, Typography, CircularProgress, Autocomplete } from "@mui/material";
-import { supabase } from "./supabaseClient";
-import { Thuoc } from "./utils/thuocHelper";
+import { Box, TextField, Button, CircularProgress, Autocomplete } from "@mui/material";
+
+// Đảm bảo đường dẫn này khớp chính xác với file thực tế trong src/lib/
+import { supabase } from "@/lib/supabase"; 
+import { Thuoc } from "../utils/thuocHelper";
 
 interface Props {
   khambenhID: string;
@@ -20,7 +22,6 @@ interface ToaThuocRow {
   so_luong_moi_lan: number;
   tong_so_luong: number;
   ghi_chu: string;
-  ton_kho: number;
 }
 
 export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint }) => {
@@ -31,7 +32,7 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
 
   const [toaThuocList, setToaThuocList] = useState<ToaThuocRow[]>([{
     id: 0, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
-    so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: 3, ghi_chu: "", ton_kho: 0
+    so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: 3, ghi_chu: ""
   }]);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
     if (!term.trim()) return setThuocList([]);
     setLoading(true);
     const { data } = await supabase.from("thuoc")
-      .select("id, ten_thuoc, don_vi, duong_dung, gia_ban, so_luong_ton")
+      .select("id, ten_thuoc, don_vi, duong_dung, so_luong_ton")
       .ilike("ten_thuoc", `%${term}%`).limit(20);
     setThuocList(data || []);
     setLoading(false);
@@ -63,8 +64,7 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
             ...newRow, 
             ten_thuoc: selected?.ten_thuoc || "", 
             don_vi: selected?.don_vi || "", 
-            duong_dung: selected?.duong_dung || "",
-            ton_kho: selected?.so_luong_ton || 0
+            duong_dung: selected?.duong_dung || "" 
           };
         }
         newRow.tong_so_luong = newRow.so_lan_dung * newRow.so_luong_moi_lan * soNgayToa;
@@ -74,7 +74,7 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
       if (rows[rows.length - 1].thuoc_id !== "") {
         rows.push({
           id: idCounter.current++, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
-          so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: soNgayToa, ghi_chu: "", ton_kho: 0
+          so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: soNgayToa, ghi_chu: ""
         });
       }
       return rows;
@@ -103,11 +103,11 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
   };
 
   const columns: GridColDef[] = [
-    { field: "ten_thuoc", headerName: "Tên thuốc", flex: 1.5, renderCell: (params) => (
+    { field: "ten_thuoc", headerName: "Tên thuốc", flex: 1.5, renderCell: (p) => (
       <Autocomplete size="small" fullWidth options={thuocList} loading={loading}
         getOptionLabel={(o) => o.ten_thuoc}
-        value={thuocList.find(t => t.id === params.row.thuoc_id) || null}
-        onChange={(_, v) => handleUpdateRow(params.row.id, "thuoc_id", v?.id || "")}
+        value={thuocList.find(t => t.id === p.row.thuoc_id) || null}
+        onChange={(_, v) => handleUpdateRow(p.row.id, "thuoc_id", v?.id || "")}
         onInputChange={(_, v) => fetchThuoc(v)}
         renderInput={(p) => <TextField {...p} placeholder="Tìm thuốc..." />}
       />
