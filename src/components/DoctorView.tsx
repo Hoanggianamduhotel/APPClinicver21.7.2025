@@ -1,11 +1,11 @@
-// DoctorView.tsx - Bản fix triệt để lỗi Build Netlify (Exit Code 2)
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Topbar from "./Topbar";
 import Sidebar from "./Sidebar";
 import DanhSachChoGrid from "./DanhSachChoGrid";
 import KhamBenhDoctor from "./KhamBenhDoctor";
-import ToaThuocDoctor from "./ToaThuocDoctor";
+// Sửa lỗi import: Thêm ngoặc nhọn để khớp với Named Export
+import { ToaThuocDoctor } from "./ToaThuocDoctor"; 
 import VisitHistory from "./VisitHistory";
 import PrescriptionHistory from "./PrescriptionHistory";
 import {
@@ -13,14 +13,13 @@ import {
   Button,
   Typography,
   Paper,
-  Grid, // Dùng Grid chuẩn, không dùng Grid2 để tránh lỗi Export
+  Grid,
   IconButton,
   Divider
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
 
-// Interface đồng bộ
 interface KhamBenh {
   benhnhan_id: string;
   bacsi_id: string;
@@ -93,7 +92,6 @@ const DoctorView: React.FC = () => {
         </IconButton>
 
         <Box sx={{ flex: 1, p: 2, display: "flex", gap: 2, overflow: "hidden" }}>
-          {/* CỘT TRÁI */}
           <Box sx={{ width: "320px", display: "flex", flexDirection: "column", gap: 2 }}>
             <Paper sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <DanhSachChoGrid
@@ -113,7 +111,6 @@ const DoctorView: React.FC = () => {
                 selectedId={khambenh.benhnhan_id}
               />
             </Paper>
-
             <Paper sx={{ height: "35%", p: 1, overflowY: "auto" }}>
               <Typography sx={sectionTitleSx}>Lịch sử khám</Typography>
               <Divider sx={{ mb: 1 }} />
@@ -127,14 +124,10 @@ const DoctorView: React.FC = () => {
             </Paper>
           </Box>
 
-          {/* CỘT PHẢI */}
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
-            
-            {/* HỒ SƠ HÀNH CHÍNH - FIX LỖI GRID TẠI ĐÂY */}
             <Paper sx={{ p: 2, borderLeft: "5px solid #1976d2" }}>
               <Typography sx={sectionTitleSx}>Hồ sơ bệnh nhân</Typography>
               <Grid container spacing={2}>
-                {/* Dùng sx thay cho prop item/xs/md để an toàn tuyệt đối với TS */}
                 <Grid sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
                   <Typography variant="caption" color="textSecondary">Họ và tên</Typography>
                   <Typography variant="body1" sx={{ fontWeight: 700, color: "#d32f2f" }}>
@@ -160,7 +153,6 @@ const DoctorView: React.FC = () => {
               </Grid>
             </Paper>
 
-            {/* NỘI DUNG KHÁM */}
             <Paper sx={{ p: 2 }}>
               <KhamBenhDoctor
                 setKhambenhID={setKhambenhID}
@@ -176,7 +168,6 @@ const DoctorView: React.FC = () => {
               </Paper>
             )}
 
-            {/* KÊ TOA MỚI */}
             <Paper sx={{ p: 2, minHeight: 200 }}>
               <Typography sx={sectionTitleSx}>Toa thuốc mới</Typography>
               {khambenhID ? (
