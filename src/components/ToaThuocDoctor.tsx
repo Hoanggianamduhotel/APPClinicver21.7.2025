@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { Box, TextField, Button, Autocomplete, CircularProgress } from "@mui/material";
 import { supabase } from "@/lib/supabase"; 
@@ -9,12 +9,6 @@ export interface Thuoc {
   don_vi: string;
   duong_dung: string;
   so_luong_ton: number;
-}
-
-interface Props {
-  khambenhID: string;
-  onFinish?: () => void;
-  onPrint?: () => void;
 }
 
 interface ToaThuocRow {
@@ -29,7 +23,40 @@ interface ToaThuocRow {
   ghi_chu: string;
 }
 
-export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint }) => {
+// --- COMPONENT RIÊNG CHO Ô GHI CHÚ ĐỂ FIX LỖI GÕ TIẾNG VIỆT ---
+const GhiChuInput = ({ value, onUpdate }: { value: string; onUpdate: (val: string) => void }) => {
+  const [localValue, setLocalValue] = useState(value);
+
+  // Cập nhật lại local state nếu dữ liệu từ cha thay đổi
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  return (
+    <TextField
+      size="small"
+      fullWidth
+      variant="standard"
+      placeholder="..."
+      value={localValue}
+      // Gõ tiếng Việt thoải mái vì chỉ render lại chính ô này
+      onChange={(e) => setLocalValue(e.target.value)}
+      // Chỉ khi người dùng rời khỏi ô hoặc dừng gõ thì mới cập nhật lên state tổng
+      onBlur={() => onUpdate(localValue)}
+      onKeyDown={(e) => {
+        // FIX LỖI SPACE NHẢY DÒNG: Chặn sự kiện nổi bọt lên DataGrid
+        if (e.key === " ") {
+          e.stopPropagation();
+        }
+      }}
+      sx={{ '& .MuiInput-root': { fontSize: '0.875rem' } }}
+    />
+  );
+};
+
+export const ToaThuocDoctor: React.FC<{ khambenhID: string; onFinish?: () => void; onPrint?: () => void }> = ({ 
+  khambenhID, onFinish, onPrint 
+}) => {
   const [thuocList, setThuocList] = useState<Thuoc[]>([]);
   const [loading, setLoading] = useState(false);
   const [soNgayToa, setSoNgayToa] = useState<number>(3);
@@ -40,7 +67,6 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
     so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: 3, ghi_chu: ""
   }]);
 
-  // Tự động tính lại tổng số lượng khi số ngày kê toa thay đổi
   useEffect(() => {
     setToaThuocList(prev => prev.map(row => ({
       ...row,
@@ -55,7 +81,6 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
       .select("id, ten_thuoc, don_vi, duong_dung, so_luong_ton")
       .ilike("ten_thuoc", `%${term}%`).limit(20);
     
-    // FIX 1: Gộp kết quả search mới vào list cũ để các dòng đã chọn không bị mất label hiển thị
     setThuocList(prev => {
       const existingIds = new Set(prev.map(t => t.id));
       const newItems = (data || []).filter(t => !existingIds.has(t.id));
@@ -64,39 +89,74 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
     setLoading(false);
   };
 
-  const handleUpdateRow = (id: number, field: keyof ToaThuocRow, value: any) => {
+  const handleUpdateRow = useCallback((id: number, field: keyof ToaThuocRow, value: any) => {
     setToaThuocList(prev => {
-      let rows = prev.map(row => {
-        if (row.id !== id) return row;
-        let newRow = { ...row, [field]: value };
-        
-        // Nếu cập nhật thuốc, tự động điền các thông tin liên quan
-        if (field === "thuoc_id") {
-          const selected = thuocList.find(t => t.id === value);
-          newRow = { 
-            ...newRow, 
-            ten_thuoc: selected?.ten_thuoc || "", 
-            don_vi: selected?.don_vi || "", 
-            duong_dung: selected?.duong_dung || "" 
-          };
-        }
-        
-        // Tính lại tổng số lượng của dòng đang sửa
-        newRow.tong_so_luong = (newRow.so_lan_dung || 0) * (newRow.so_luong_moi_lan || 0) * soNgayToa;
-        return newRow;
-      });
+      let rows = [...prev];
+      const index = rows.findIndex(r => r.id === id);
+      if (index === -1) return prev;
 
-      // FIX: Tự động thêm dòng mới khi dòng cuối cùng đã được chọn thuốc
-      const lastRow = rows[rows.length - 1];
-      if (lastRow.thuoc_id !== "") {
+      let newRow = { ...rows[index], [field]: value };
+
+      if (field === "thuoc_id") {
+        const selected = thuocList.find(t => t.id === value);
+        newRow = { 
+          ...newRow, 
+          ten_thuoc: selected?.ten_thuoc || "", 
+          don_vi: selected?.don_vi || "", 
+          duong_dung: selected?.duong_dung || "" 
+        };
+      }
+      
+      newRow.tong_so_luong = (newRow.so_lan_dung || 0) * (newRow.so_luong_moi_lan || 0) * soNgayToa;
+      rows[index] = newRow;
+
+      // Tự thêm dòng mới nếu dòng cuối cùng được điền thuốc
+      if (rows[rows.length - 1].thuoc_id !== "") {
         rows.push({
           id: idCounter.current++, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
           so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: soNgayToa, ghi_chu: ""
         });
       }
-      return [...rows];
+      return rows;
     });
-  };
+  }, [thuocList, soNgayToa]);
+
+  const columns: GridColDef[] = [
+    { 
+      field: "ten_thuoc", 
+      headerName: "Tên thuốc", 
+      flex: 2, 
+      renderCell: (p) => (
+        <Autocomplete 
+          size="small" fullWidth options={thuocList} loading={loading}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          getOptionLabel={(o) => o.ten_thuoc || ""}
+          value={thuocList.find(t => t.id === p.row.thuoc_id) || null}
+          onChange={(_, v) => handleUpdateRow(p.row.id, "thuoc_id", v?.id || "")}
+          onInputChange={(_, v) => fetchThuoc(v)}
+          renderInput={(params) => <TextField {...params} variant="standard" placeholder="Tìm thuốc..." />}
+        />
+      )
+    },
+    { field: "so_lan_dung", headerName: "Lần/N", width: 70, renderCell: (p) => (
+      <TextField type="number" size="small" variant="standard" value={p.row.so_lan_dung} onChange={(e) => handleUpdateRow(p.row.id, "so_lan_dung", +e.target.value)} />
+    )},
+    { field: "so_luong_moi_lan", headerName: "SL/L", width: 70, renderCell: (p) => (
+      <TextField type="number" size="small" variant="standard" value={p.row.so_luong_moi_lan} onChange={(e) => handleUpdateRow(p.row.id, "so_luong_moi_lan", +e.target.value)} />
+    )},
+    { field: "tong_so_luong", headerName: "Tổng", width: 70, renderCell: (p) => <span style={{ paddingLeft: '8px' }}>{p.row.tong_so_luong}</span> },
+    { 
+      field: "ghi_chu", 
+      headerName: "Ghi chú", 
+      flex: 1.5, 
+      renderCell: (p) => (
+        <GhiChuInput 
+          value={p.row.ghi_chu} 
+          onUpdate={(val) => handleUpdateRow(p.row.id, "ghi_chu", val)} 
+        />
+      )
+    }
+  ];
 
   const handleSave = async () => {
     const dataToInsert = toaThuocList
@@ -113,140 +173,24 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
     if (dataToInsert.length === 0) return alert("Chưa có thuốc để lưu");
     const { error } = await supabase.from("toathuoc").insert(dataToInsert);
     if (error) alert("Lỗi: " + error.message);
-    else {
-      alert("Đã lưu thành công!");
-      if (onFinish) onFinish();
-    }
+    else { alert("Đã lưu thành công!"); if (onFinish) onFinish(); }
   };
-
-  const columns: GridColDef[] = [
-    { 
-      field: "ten_thuoc", 
-      headerName: "Tên thuốc", 
-      flex: 2, 
-      renderCell: (p) => (
-        <Autocomplete 
-          size="small" 
-          fullWidth 
-          options={thuocList} 
-          loading={loading}
-          // Quan trọng để đồng bộ ID
-          isOptionEqualToValue={(option, value) => option.id === value.id}
-          getOptionLabel={(o) => o.ten_thuoc || ""}
-          value={thuocList.find(t => t.id === p.row.thuoc_id) || null}
-          onChange={(_, v) => handleUpdateRow(p.row.id, "thuoc_id", v?.id || "")}
-          onInputChange={(_, v) => fetchThuoc(v)}
-          renderInput={(params) => (
-            <TextField 
-              {...params} 
-              variant="standard" 
-              placeholder="Tìm thuốc..." 
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {loading ? <CircularProgress color="inherit" size={16} /> : null}
-                    {params.InputProps.endAdornment}
-                  </>
-                ),
-              }}
-            />
-          )}
-        />
-      )
-    },
-    { 
-      field: "so_lan_dung", 
-      headerName: "Lần/N", 
-      width: 70, 
-      renderCell: (p) => (
-        <TextField 
-          type="number" 
-          size="small" 
-          variant="standard"
-          value={p.row.so_lan_dung} 
-          onChange={(e) => handleUpdateRow(p.row.id, "so_lan_dung", +e.target.value)} 
-        />
-      )
-    },
-    { 
-      field: "so_luong_moi_lan", 
-      headerName: "SL/L", 
-      width: 70, 
-      renderCell: (p) => (
-        <TextField 
-          type="number" 
-          size="small" 
-          variant="standard"
-          value={p.row.so_luong_moi_lan} 
-          onChange={(e) => handleUpdateRow(p.row.id, "so_luong_moi_lan", +e.target.value)} 
-        />
-      )
-    },
-    { 
-      field: "tong_so_luong", 
-      headerName: "Tổng", 
-      width: 70,
-      renderCell: (p) => <span style={{ paddingLeft: '8px' }}>{p.row.tong_so_luong}</span>
-    },
-    { 
-      field: "ghi_chu", 
-      headerName: "Ghi chú", 
-      flex: 1.5, 
-      renderCell: (p) => (
-        <TextField 
-          size="small" 
-          fullWidth 
-          variant="standard"
-          placeholder="..."
-          value={p.row.ghi_chu} 
-          onChange={(e) => handleUpdateRow(p.row.id, "ghi_chu", e.target.value)} 
-          sx={{ '& .MuiInput-root': { fontSize: '0.875rem' } }}
-        />
-      )
-    }
-  ];
 
   return (
     <Box sx={{ width: '100%', bgcolor: 'background.paper', p: 1 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
-        <TextField 
-          label="Số ngày kê toa" 
-          type="number" 
-          size="small"
-          value={soNgayToa} 
-          onChange={(e) => setSoNgayToa(+e.target.value)} 
-          sx={{ width: 150 }} 
-        />
-      </Box>
-
+      <TextField label="Số ngày kê toa" type="number" size="small" value={soNgayToa} onChange={(e) => setSoNgayToa(+e.target.value)} sx={{ width: 150, mb: 2 }} />
       <DataGrid 
-        autoHeight 
-        rows={toaThuocList} 
-        columns={columns} 
-        hideFooter 
-        rowHeight={50} // Tăng chiều cao dòng để input không bị đè font
-        disableRowSelectionOnClick
+        autoHeight rows={toaThuocList} columns={columns} hideFooter 
+        rowHeight={50} disableRowSelectionOnClick
         sx={{
           border: 'none',
-          '& .MuiDataGrid-cell': {
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 8px',
-          },
-          '& .MuiDataGrid-columnHeader': {
-            backgroundColor: '#f5f5f5',
-          }
+          '& .MuiDataGrid-cell': { display: 'flex', alignItems: 'center', padding: '0 8px' },
+          '& .MuiDataGrid-columnHeader': { backgroundColor: '#f5f5f5' }
         }}
       />
-
       <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
-        <Button variant="contained" color="success" onClick={handleSave}>
-          Lưu toa thuốc
-        </Button>
-        <Button variant="outlined" color="primary" onClick={onPrint}>
-          In toa
-        </Button>
+        <Button variant="contained" color="success" onClick={handleSave}>Lưu toa thuốc</Button>
+        <Button variant="outlined" color="primary" onClick={onPrint}>In toa</Button>
       </Box>
     </Box>
   );
