@@ -1,11 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import { Box, TextField, Button, Autocomplete } from "@mui/material";
-
-// Đảm bảo đường dẫn này khớp với file thực tế của bạn trong src/lib/
+import { Box, TextField, Button, Autocomplete, CircularProgress } from "@mui/material";
 import { supabase } from "@/lib/supabase"; 
 
-// Định nghĩa kiểu dữ liệu ngay tại đây để tránh lỗi phụ thuộc file ngoài
 export interface Thuoc {
   id: string;
   ten_thuoc: string;
@@ -43,29 +40,37 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
     so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: 3, ghi_chu: ""
   }]);
 
+  // Tự động tính lại tổng số lượng khi số ngày kê toa thay đổi
   useEffect(() => {
     setToaThuocList(prev => prev.map(row => ({
       ...row,
-      tong_so_luong: row.so_lan_dung * row.so_luong_moi_lan * soNgayToa
+      tong_so_luong: (row.so_lan_dung || 0) * (row.so_luong_moi_lan || 0) * soNgayToa
     })));
   }, [soNgayToa]);
 
   const fetchThuoc = async (term: string) => {
-    if (!term.trim()) return setThuocList([]);
+    if (!term.trim()) return;
     setLoading(true);
     const { data } = await supabase.from("thuoc")
       .select("id, ten_thuoc, don_vi, duong_dung, so_luong_ton")
       .ilike("ten_thuoc", `%${term}%`).limit(20);
-    setThuocList(data || []);
+    
+    // FIX 1: Gộp kết quả search mới vào list cũ để các dòng đã chọn không bị mất label hiển thị
+    setThuocList(prev => {
+      const existingIds = new Set(prev.map(t => t.id));
+      const newItems = (data || []).filter(t => !existingIds.has(t.id));
+      return [...prev, ...newItems];
+    });
     setLoading(false);
   };
 
   const handleUpdateRow = (id: number, field: keyof ToaThuocRow, value: any) => {
     setToaThuocList(prev => {
-      const rows = prev.map(row => {
+      let rows = prev.map(row => {
         if (row.id !== id) return row;
         let newRow = { ...row, [field]: value };
         
+        // Nếu cập nhật thuốc, tự động điền các thông tin liên quan
         if (field === "thuoc_id") {
           const selected = thuocList.find(t => t.id === value);
           newRow = { 
@@ -75,17 +80,21 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
             duong_dung: selected?.duong_dung || "" 
           };
         }
-        newRow.tong_so_luong = newRow.so_lan_dung * newRow.so_luong_moi_lan * soNgayToa;
+        
+        // Tính lại tổng số lượng của dòng đang sửa
+        newRow.tong_so_luong = (newRow.so_lan_dung || 0) * (newRow.so_luong_moi_lan || 0) * soNgayToa;
         return newRow;
       });
 
-      if (rows[rows.length - 1].thuoc_id !== "") {
+      // FIX: Tự động thêm dòng mới khi dòng cuối cùng đã được chọn thuốc
+      const lastRow = rows[rows.length - 1];
+      if (lastRow.thuoc_id !== "") {
         rows.push({
           id: idCounter.current++, thuoc_id: "", ten_thuoc: "", don_vi: "", duong_dung: "",
           so_lan_dung: 1, so_luong_moi_lan: 1, tong_so_luong: soNgayToa, ghi_chu: ""
         });
       }
-      return rows;
+      return [...rows];
     });
   };
 
@@ -111,34 +120,133 @@ export const ToaThuocDoctor: React.FC<Props> = ({ khambenhID, onFinish, onPrint 
   };
 
   const columns: GridColDef[] = [
-    { field: "ten_thuoc", headerName: "Tên thuốc", flex: 1.5, renderCell: (p) => (
-      <Autocomplete size="small" fullWidth options={thuocList} loading={loading}
-        getOptionLabel={(o) => o.ten_thuoc}
-        value={thuocList.find(t => t.id === p.row.thuoc_id) || null}
-        onChange={(_, v) => handleUpdateRow(p.row.id, "thuoc_id", v?.id || "")}
-        onInputChange={(_, v) => fetchThuoc(v)}
-        renderInput={(p) => <TextField {...p} placeholder="Tìm thuốc..." />}
-      />
-    )},
-    { field: "so_lan_dung", headerName: "Lần/N", width: 80, renderCell: (p) => (
-      <TextField type="number" size="small" value={p.row.so_lan_dung} onChange={(e) => handleUpdateRow(p.row.id, "so_lan_dung", +e.target.value)} />
-    )},
-    { field: "so_luong_moi_lan", headerName: "SL/L", width: 80, renderCell: (p) => (
-      <TextField type="number" size="small" value={p.row.so_luong_moi_lan} onChange={(e) => handleUpdateRow(p.row.id, "so_luong_moi_lan", +e.target.value)} />
-    )},
-    { field: "tong_so_luong", headerName: "Tổng", width: 80 },
-    { field: "ghi_chu", headerName: "Ghi chú", flex: 1, renderCell: (p) => (
-      <TextField size="small" fullWidth value={p.row.ghi_chu} onChange={(e) => handleUpdateRow(p.row.id, "ghi_chu", e.target.value)} />
-    )}
+    { 
+      field: "ten_thuoc", 
+      headerName: "Tên thuốc", 
+      flex: 2, 
+      renderCell: (p) => (
+        <Autocomplete 
+          size="small" 
+          fullWidth 
+          options={thuocList} 
+          loading={loading}
+          // Quan trọng để đồng bộ ID
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          getOptionLabel={(o) => o.ten_thuoc || ""}
+          value={thuocList.find(t => t.id === p.row.thuoc_id) || null}
+          onChange={(_, v) => handleUpdateRow(p.row.id, "thuoc_id", v?.id || "")}
+          onInputChange={(_, v) => fetchThuoc(v)}
+          renderInput={(params) => (
+            <TextField 
+              {...params} 
+              variant="standard" 
+              placeholder="Tìm thuốc..." 
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {loading ? <CircularProgress color="inherit" size={16} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
+      )
+    },
+    { 
+      field: "so_lan_dung", 
+      headerName: "Lần/N", 
+      width: 70, 
+      renderCell: (p) => (
+        <TextField 
+          type="number" 
+          size="small" 
+          variant="standard"
+          value={p.row.so_lan_dung} 
+          onChange={(e) => handleUpdateRow(p.row.id, "so_lan_dung", +e.target.value)} 
+        />
+      )
+    },
+    { 
+      field: "so_luong_moi_lan", 
+      headerName: "SL/L", 
+      width: 70, 
+      renderCell: (p) => (
+        <TextField 
+          type="number" 
+          size="small" 
+          variant="standard"
+          value={p.row.so_luong_moi_lan} 
+          onChange={(e) => handleUpdateRow(p.row.id, "so_luong_moi_lan", +e.target.value)} 
+        />
+      )
+    },
+    { 
+      field: "tong_so_luong", 
+      headerName: "Tổng", 
+      width: 70,
+      renderCell: (p) => <span style={{ paddingLeft: '8px' }}>{p.row.tong_so_luong}</span>
+    },
+    { 
+      field: "ghi_chu", 
+      headerName: "Ghi chú", 
+      flex: 1.5, 
+      renderCell: (p) => (
+        <TextField 
+          size="small" 
+          fullWidth 
+          variant="standard"
+          placeholder="..."
+          value={p.row.ghi_chu} 
+          onChange={(e) => handleUpdateRow(p.row.id, "ghi_chu", e.target.value)} 
+          sx={{ '& .MuiInput-root': { fontSize: '0.875rem' } }}
+        />
+      )
+    }
   ];
 
   return (
-    <Box>
-      <TextField label="Số ngày kê toa" type="number" value={soNgayToa} onChange={(e) => setSoNgayToa(+e.target.value)} sx={{ mb: 2, width: 150 }} />
-      <DataGrid autoHeight rows={toaThuocList} columns={columns} hideFooter />
-      <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
-        <Button variant="contained" color="success" onClick={handleSave}>Lưu toa thuốc</Button>
-        <Button variant="contained" color="secondary" onClick={onPrint}>In toa</Button>
+    <Box sx={{ width: '100%', bgcolor: 'background.paper', p: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
+        <TextField 
+          label="Số ngày kê toa" 
+          type="number" 
+          size="small"
+          value={soNgayToa} 
+          onChange={(e) => setSoNgayToa(+e.target.value)} 
+          sx={{ width: 150 }} 
+        />
+      </Box>
+
+      <DataGrid 
+        autoHeight 
+        rows={toaThuocList} 
+        columns={columns} 
+        hideFooter 
+        rowHeight={50} // Tăng chiều cao dòng để input không bị đè font
+        disableRowSelectionOnClick
+        sx={{
+          border: 'none',
+          '& .MuiDataGrid-cell': {
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 8px',
+          },
+          '& .MuiDataGrid-columnHeader': {
+            backgroundColor: '#f5f5f5',
+          }
+        }}
+      />
+
+      <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
+        <Button variant="contained" color="success" onClick={handleSave}>
+          Lưu toa thuốc
+        </Button>
+        <Button variant="outlined" color="primary" onClick={onPrint}>
+          In toa
+        </Button>
       </Box>
     </Box>
   );
