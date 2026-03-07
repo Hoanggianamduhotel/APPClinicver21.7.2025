@@ -1,10 +1,18 @@
 import React, { useEffect, useState, useRef } from "react";
-import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
-import { Box, TextField, Button, CircularProgress, Autocomplete } from "@mui/material";
+import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { Box, TextField, Button, Autocomplete } from "@mui/material";
 
-// Đảm bảo đường dẫn này khớp chính xác với file thực tế trong src/lib/
+// Đảm bảo đường dẫn này khớp với file thực tế của bạn trong src/lib/
 import { supabase } from "@/lib/supabase"; 
-import { Thuoc } from "../utils/thuocHelper";
+
+// Định nghĩa kiểu dữ liệu ngay tại đây để tránh lỗi phụ thuộc file ngoài
+export interface Thuoc {
+  id: string;
+  ten_thuoc: string;
+  don_vi: string;
+  duong_dung: string;
+  so_luong_ton: number;
+}
 
 interface Props {
   khambenhID: string;
