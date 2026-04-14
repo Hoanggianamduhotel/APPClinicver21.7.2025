@@ -1,14 +1,12 @@
-// DanhSachChoGrid.tsx - Tối ưu hiển thị 2 cột & Truyền dữ liệu đầy đủ
 import React, { useState, useEffect } from 'react';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRowParams } from '@mui/x-data-grid';
 import { Box, Typography, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { supabase } from '@/lib/supabase';
 
-// Định nghĩa Interface khớp với cấu trúc bảng danhsachcho của bạn
 interface Patient {
   id: number;
-  benhnhan_id: string; // UUID
+  benhnhan_id: string;
   ho_ten: string;
   ngay_sinh: string;
   thang_tuoi: number;
@@ -31,7 +29,6 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
   }, []);
 
   const fetchWaitingList = async () => {
-    // Truy vấn đầy đủ các cột cần thiết để hiển thị bên DoctorView
     const { data, error } = await supabase
       .from('danhsachcho')
       .select('id, benhnhan_id, ho_ten, ngay_sinh, thang_tuoi, can_nang, dia_chi, so_dien_thoai, gioi_tinh')
@@ -41,11 +38,11 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
       console.error('Error fetching waiting list:', error);
       return;
     }
-    
     setPatients(data || []);
   };
 
-  const handleRemoveFromQueue = async (uuid: string) => {
+  const handleRemoveFromQueue = async (event: React.MouseEvent, uuid: string) => {
+    event.stopPropagation(); // Ngăn chặn trigger onRowClick
     const { error } = await supabase
       .from('danhsachcho')
       .delete()
@@ -55,11 +52,9 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
       console.error('Error removing from queue:', error);
       return;
     }
-    
     fetchWaitingList();
   };
 
-  // Logic tính tuổi chuẩn y khoa
   const hienThiTuoiTheoThang = (thangTuoi: number | null | undefined) => {
     if (thangTuoi === null || thangTuoi === undefined) return "-";
     if (thangTuoi < 24) return `${thangTuoi} th`;
@@ -69,7 +64,6 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
     return thangLe === 0 ? `${nam} tuổi` : `${nam}t ${thangLe}th`;
   };
 
-  // Cấu hình 2 cột chính: Họ tên và Tuổi
   const columns: GridColDef[] = [
     { 
       field: 'ho_ten', 
@@ -96,10 +90,7 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
       renderCell: (params) => (
         <IconButton
           size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleRemoveFromQueue(params.row.benhnhan_id);
-          }}
+          onClick={(e) => handleRemoveFromQueue(e, params.row.benhnhan_id)}
           sx={{ color: '#d32f2f' }}
         >
           <DeleteIcon fontSize="small" />
@@ -111,28 +102,27 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
   return (
     <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 1.5, bgcolor: '#1976d2', color: 'white', display: 'flex', justifyContent: 'space-between' }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-          DANH SÁCH CHỜ
-        </Typography>
-        <Typography variant="subtitle1">
-          {patients.length}
-        </Typography>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>DANH SÁCH CHỜ</Typography>
+        <Typography variant="subtitle1">{patients.length}</Typography>
       </Box>
 
       <DataGrid
         rows={patients.map((p) => ({
           ...p,
-          id: p.id, // ID chính cho DataGrid
           thang_tuoi_display: hienThiTuoiTheoThang(p.thang_tuoi),
         }))}
         columns={columns}
-        onRowClick={(params) => onSelect(params.row)} // Truyền toàn bộ object row (có địa chỉ, sđt...)
+        onRowClick={(params: GridRowParams) => onSelect(params.row)}
+        getRowClassName={(params) => 
+          params.row.benhnhan_id === selectedId ? 'row-selected' : ''
+        }
         sx={{
           border: 'none',
+          '& .row-selected': {
+            backgroundColor: '#e3f2fd !important',
+          },
           '& .MuiDataGrid-row': {
             cursor: 'pointer',
-            backgroundColor: (params: any) => 
-              params.row?.benhnhan_id === selectedId ? '#e3f2fd !important' : 'inherit',
             '&:hover': { bgcolor: '#f5f5f5' }
           },
           '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 'bold' },
