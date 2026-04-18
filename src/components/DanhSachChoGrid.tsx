@@ -1,14 +1,13 @@
-// DanhSachChoGrid.tsx - Tối ưu hiển thị 2 cột & Truyền dữ liệu đầy đủ
+// DanhSachChoGrid.tsx - Đã sửa lỗi cú pháp (Syntax Error)
 import React, { useState, useEffect } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box, Typography, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { supabase } from '@/lib/supabase';
 
-// Định nghĩa Interface khớp với cấu trúc bảng danhsachcho
 interface Patient {
   id: number;
-  benhnhan_id: string; // UUID
+  benhnhan_id: string;
   ho_ten: string;
   ngay_sinh: string;
   thang_tuoi: number;
@@ -28,8 +27,6 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
 
   useEffect(() => {
     fetchWaitingList();
-    
-    // Thiết lập realtime để cập nhật danh sách tự động khi có bệnh nhân mới đăng ký
     const channel = supabase
       .channel('danhsachcho_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'danhsachcho' }, () => {
@@ -52,31 +49,22 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
       console.error('Error fetching waiting list:', error);
       return;
     }
-    
     setPatients(data || []);
   };
 
   const handleRemoveFromQueue = async (uuid: string) => {
     if (!window.confirm("Xóa bệnh nhân này khỏi danh sách chờ?")) return;
-    
     const { error } = await supabase
       .from('danhsachcho')
       .delete()
       .eq('benhnhan_id', uuid);
-    
-    if (error) {
-      console.error('Error removing from queue:', error);
-      return;
-    }
-    
+    if (error) return;
     fetchWaitingList();
   };
 
-  // Logic tính tuổi chuẩn y khoa
   const hienThiTuoiTheoThang = (thangTuoi: number | null | undefined) => {
     if (thangTuoi === null || thangTuoi === undefined) return "-";
     if (thangTuoi < 24) return `${thangTuoi} th`;
-    
     const nam = Math.floor(thangTuoi / 12);
     const thangLe = thangTuoi % 12;
     return thangLe === 0 ? `${nam} tuổi` : `${nam}t ${thangLe}th`;
@@ -99,11 +87,6 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
       flex: 0.7,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 500, color: '#666' }}>
-          {params.value}
-        </Typography>
-      )
     },
     {
       field: 'actions',
@@ -159,34 +142,21 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
         }))}
         columns={columns}
         onRowClick={(params) => onSelect(params.row)}
-        getRowId={(row) => row.id}
         sx={{
           border: 'none',
           '& .MuiDataGrid-row': {
             cursor: 'pointer',
-            '&.Mui-selected': {
-              backgroundColor: '#e3f2fd !important',
-            },
+            backgroundColor: (params: any) => 
+               params.row?.benhnhan_id === selectedId ? '#e3f2fd !important' : 'inherit',
             '&:hover': { bgcolor: '#f5f5f5' }
           },
-          '& .MuiDataGrid-columnHeaders': {
-            bgcolor: '#fafafa',
-            borderBottom: '1px solid #eee'
-          },
-          '& .MuiDataGrid-columnHeaderTitle': { 
-            fontWeight: 'bold',
-            fontSize: '0.75rem',
-            color: '#777'
-          },
-          '& .MuiDataGrid-cell': {
-            borderBottom: '1px solid #f0f0f0',
-            '&:focus': { outline: 'none' }
-          },
+          '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 'bold' },
+          '& .MuiDataGrid-cell:focus': { outline: 'none' },
         }}
         hideFooter
         disableColumnMenu
         disableRowSelectionOnClick
-      </Box>
+      />
     </Box>
   );
 };
