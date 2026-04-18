@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import Topbar from "./Topbar";
 import Sidebar from "./Sidebar";
 import DanhSachChoGrid from "./DanhSachChoGrid";
 import KhamBenhDoctor from "./KhamBenhDoctor";
-// Sửa lỗi import: Thêm ngoặc nhọn để khớp với Named Export
-import { ToaThuocDoctor } from "./ToaThuocDoctor"; 
+import { ToaThuocDoctor } from "./ToaThuocDoctor";
 import VisitHistory from "./VisitHistory";
 import PrescriptionHistory from "./PrescriptionHistory";
+
 import {
   Box,
   Button,
@@ -15,10 +15,15 @@ import {
   Paper,
   Grid,
   IconButton,
-  Divider
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import LogoutIcon from "@mui/icons-material/Logout";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import PersonIcon from "@mui/icons-material/Person";
 
 interface KhamBenh {
   benhnhan_id: string;
@@ -36,11 +41,10 @@ interface KhamBenh {
 
 const sectionTitleSx = {
   fontFamily: "Roboto, Helvetica, Arial, sans-serif",
-  fontSize: "1.1rem",
+  fontSize: "0.9rem",
   fontWeight: 700,
   color: "#1976d2",
-  textTransform: "uppercase" as const, 
-  mb: 1
+  textTransform: "uppercase" as const,
 };
 
 const DoctorView: React.FC = () => {
@@ -56,7 +60,7 @@ const DoctorView: React.FC = () => {
     tuoi_display: "",
     can_nang: "",
     dia_chi: "",
-    so_dien_thoai: ""
+    so_dien_thoai: "",
   });
   const [selectedVisitId, setSelectedVisitId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -65,12 +69,14 @@ const DoctorView: React.FC = () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
+
   const toggleDrawer = () => setDrawerOpen(!drawerOpen);
 
   return (
-    <Box sx={{ bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+    <Box sx={{ bgcolor: "#f0f2f5", minHeight: "100vh" }}>
       <Topbar />
       <Box sx={{ display: "flex", height: "calc(100vh - 64px)", mt: 8 }}>
+        {/* SIDEBAR */}
         {drawerOpen && (
           <Box sx={{ width: 240, display: "flex", flexDirection: "column", bgcolor: "background.paper", boxShadow: 1, zIndex: 1200 }}>
             <Sidebar role="doctor" />
@@ -91,9 +97,12 @@ const DoctorView: React.FC = () => {
           <MenuIcon />
         </IconButton>
 
-        <Box sx={{ flex: 1, p: 2, display: "flex", gap: 2, overflow: "hidden" }}>
-          <Box sx={{ width: "320px", display: "flex", flexDirection: "column", gap: 2 }}>
-            <Paper sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        {/* MAIN CONTENT AREA */}
+        <Box sx={{ flex: 1, p: 1.5, display: "flex", gap: 1.5, overflow: "hidden" }}>
+          
+          {/* LEFT COLUMN: DANH SÁCH CHỜ & LỊCH SỬ */}
+          <Box sx={{ width: "320px", display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Paper sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", borderRadius: 2 }}>
               <DanhSachChoGrid
                 onSelect={(bn: any) => {
                   setKhambenh((prev) => ({
@@ -111,8 +120,8 @@ const DoctorView: React.FC = () => {
                 selectedId={khambenh.benhnhan_id}
               />
             </Paper>
-            <Paper sx={{ height: "35%", p: 1, overflowY: "auto" }}>
-              <Typography sx={sectionTitleSx}>Lịch sử khám</Typography>
+            <Paper sx={{ height: "35%", p: 1.5, overflowY: "auto", borderRadius: 2 }}>
+              <Typography sx={sectionTitleSx} gutterBottom>Lịch sử khám</Typography>
               <Divider sx={{ mb: 1 }} />
               {khambenh.benhnhan_id ? (
                 <VisitHistory benhnhan_id={khambenh.benhnhan_id} onSelectVisit={setSelectedVisitId} />
@@ -124,68 +133,96 @@ const DoctorView: React.FC = () => {
             </Paper>
           </Box>
 
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
-            <Paper sx={{ p: 2, borderLeft: "5px solid #1976d2" }}>
-              <Typography sx={sectionTitleSx}>Hồ sơ bệnh nhân</Typography>
-              <Grid container spacing={2}>
-                <Grid sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
-                  <Typography variant="caption" color="textSecondary">Họ và tên</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 700, color: "#d32f2f" }}>
-                    {khambenh.ho_ten ? khambenh.ho_ten.toUpperCase() : "---"}
+          {/* RIGHT COLUMN: CHI TIẾT KHÁM BỆNH */}
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1, overflowY: "auto" }}>
+            
+            {/* 1. HỒ SƠ BỆNH NHÂN (ACCORDION THU PHÓNG) */}
+            <Accordion defaultExpanded sx={{ borderRadius: '8px !important', overflow: 'hidden', boxShadow: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: "#f8f9fa", borderBottom: '1px solid #eee' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <PersonIcon color="primary" />
+                  <Typography sx={{ fontWeight: 700, color: "#d32f2f", textTransform: 'uppercase' }}>
+                    {khambenh.ho_ten || "CHƯA CHỌN BỆNH NHÂN"}
                   </Typography>
-                </Grid>
-                <Grid sx={{ gridColumn: { xs: "span 6", md: "span 2" } }}>
-                  <Typography variant="caption" color="textSecondary">Tuổi</Typography>
-                  <Typography variant="body1">{khambenh.tuoi_display || "---"}</Typography>
-                </Grid>
-                <Grid sx={{ gridColumn: { xs: "span 6", md: "span 2" } }}>
-                  <Typography variant="caption" color="textSecondary">Cân nặng</Typography>
-                  <Typography variant="body1">{khambenh.can_nang ? `${khambenh.can_nang} kg` : "---"}</Typography>
-                </Grid>
-                <Grid sx={{ gridColumn: { xs: "span 12", md: "span 4" } }}>
-                  <Typography variant="caption" color="textSecondary">Số điện thoại</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{khambenh.so_dien_thoai || "---"}</Typography>
-                </Grid>
-                <Grid sx={{ gridColumn: { xs: "span 12" } }}>
-                  <Typography variant="caption" color="textSecondary">Địa chỉ</Typography>
-                  <Typography variant="body2">{khambenh.dia_chi || "---"}</Typography>
-                </Grid>
-              </Grid>
-            </Paper>
-
-            <Paper sx={{ p: 2 }}>
-              <KhamBenhDoctor
-                setKhambenhID={setKhambenhID}
-                setKhambenh={setKhambenh}
-                khambenh={khambenh}
-              />
-            </Paper>
-
-            {selectedVisitId && (
-              <Paper sx={{ p: 2, bgcolor: "#fffde7" }}>
-                <Typography sx={sectionTitleSx} color="secondary">Chi tiết toa cũ</Typography>
-                <PrescriptionHistory visitId={selectedVisitId} />
-              </Paper>
-            )}
-
-            <Paper sx={{ p: 2, minHeight: 200 }}>
-              <Typography sx={sectionTitleSx}>Toa thuốc mới</Typography>
-              {khambenhID ? (
-                <>
-                  <ToaThuocDoctor khambenhID={khambenhID} />
-                  <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
-                    <Button variant="contained" size="large" sx={{ px: 4 }}>Lưu toa</Button>
-                    <Button variant="outlined" size="large">In toa thuốc</Button>
-                  </Box>
-                </>
-              ) : (
-                <Box sx={{ py: 4, border: "1px dashed #ccc", textAlign: "center", borderRadius: 1 }}>
-                  <Typography variant="body2" color="textSecondary">
-                    Lưu "Nội dung thăm khám" ở trên để kê toa mới
+                  <Typography variant="body2" sx={{ color: '#666' }}>
+                    {khambenh.tuoi_display ? `| ${khambenh.tuoi_display}` : ""}
                   </Typography>
                 </Box>
-              )}
-            </Paper>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 2 }}>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 1, bgcolor: '#e8f5e9', borderRadius: 1, border: '1px solid #c8e6c9' }}>
+                      <Typography variant="caption" color="success.main" sx={{ fontWeight: 700 }}>GIỚI TÍNH / TUỔI</Typography>
+                      <Typography variant="body1" fontWeight={600}>{khambenh.tuoi_display || "---"}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 1, bgcolor: '#fce4ec', borderRadius: 1, border: '1px solid #f8bbd0' }}>
+                      <Typography variant="caption" color="secondary.main" sx={{ fontWeight: 700 }}>CÂN NẶNG</Typography>
+                      <Typography variant="body1" fontWeight={600}>{khambenh.can_nang ? `${khambenh.can_nang} kg` : "---"}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}>
+                      <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700 }}>ĐIỆN THOẠI</Typography>
+                      <Typography variant="body1" fontWeight={600}>{khambenh.so_dien_thoai || "---"}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Box sx={{ p: 1, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffe0b2' }}>
+                      <Typography variant="caption" color="warning.main" sx={{ fontWeight: 700 }}>ĐỊA CHỈ</Typography>
+                      <Typography variant="body2" fontWeight={500}>{khambenh.dia_chi || "---"}</Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* 2. NỘI DUNG KHÁM (THU PHÓNG) */}
+            <Accordion defaultExpanded sx={{ borderRadius: '8px !important', overflow: 'hidden', boxShadow: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: "#f8f9fa", borderBottom: '1px solid #eee' }}>
+                <Typography sx={sectionTitleSx}>Nội dung thăm khám</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <KhamBenhDoctor
+                  setKhambenhID={setKhambenhID}
+                  setKhambenh={setKhambenh}
+                  khambenh={khambenh}
+                />
+              </AccordionDetails>
+            </Accordion>
+
+            {/* 3. LỊCH SỬ TOA CŨ (CHỈ HIỆN KHI CHỌN TRONG LỊCH SỬ) */}
+            {selectedVisitId && (
+              <Accordion defaultExpanded sx={{ borderRadius: '8px !important', bgcolor: "#fffde7", boxShadow: 1 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography sx={sectionTitleSx} color="secondary">Chi tiết toa cũ</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <PrescriptionHistory visitId={selectedVisitId} />
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* 4. KÊ TOA THUỐC (THU PHÓNG) */}
+            <Accordion defaultExpanded sx={{ borderRadius: '8px !important', overflow: 'hidden', boxShadow: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: "#f8f9fa", borderBottom: '1px solid #eee' }}>
+                <Typography sx={sectionTitleSx}>Toa thuốc mới</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}> {/* P:0 để DataGrid sát lề đẹp hơn */}
+                {khambenhID ? (
+                  <ToaThuocDoctor khambenhID={khambenhID} />
+                ) : (
+                  <Box sx={{ py: 6, textAlign: "center", bgcolor: '#fafafa' }}>
+                    <Typography variant="body2" color="textSecondary">
+                      Vui lòng <b>Lưu nội dung thăm khám</b> ở trên để bắt đầu kê toa
+                    </Typography>
+                  </Box>
+                )}
+              </AccordionDetails>
+            </Accordion>
+
           </Box>
         </Box>
       </Box>
