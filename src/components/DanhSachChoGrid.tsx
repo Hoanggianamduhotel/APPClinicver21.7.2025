@@ -5,7 +5,7 @@ import { Box, Typography, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { supabase } from '@/lib/supabase';
 
-// Định nghĩa Interface khớp với cấu trúc bảng danhsachcho của bạn
+// Định nghĩa Interface khớp với cấu trúc bảng danhsachcho
 interface Patient {
   id: number;
   benhnhan_id: string; // UUID
@@ -20,7 +20,7 @@ interface Patient {
 
 interface DanhSachChoGridProps {
   onSelect: (patient: any) => void;
-  selectedId: string;
+  selectedId: string | null;
 }
 
 const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId }) => {
@@ -28,10 +28,21 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
 
   useEffect(() => {
     fetchWaitingList();
+    
+    // Thiết lập realtime để cập nhật danh sách tự động khi có bệnh nhân mới đăng ký
+    const channel = supabase
+      .channel('danhsachcho_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'danhsachcho' }, () => {
+        fetchWaitingList();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchWaitingList = async () => {
-    // Truy vấn đầy đủ các cột cần thiết để hiển thị bên DoctorView
     const { data, error } = await supabase
       .from('danhsachcho')
       .select('id, benhnhan_id, ho_ten, ngay_sinh, thang_tuoi, can_nang, dia_chi, so_dien_thoai, gioi_tinh')
@@ -46,6 +57,8 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
   };
 
   const handleRemoveFromQueue = async (uuid: string) => {
+    if (!window.confirm("Xóa bệnh nhân này khỏi danh sách chờ?")) return;
+    
     const { error } = await supabase
       .from('danhsachcho')
       .delete()
@@ -69,14 +82,13 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
     return thangLe === 0 ? `${nam} tuổi` : `${nam}t ${thangLe}th`;
   };
 
-  // Cấu hình 2 cột chính: Họ tên và Tuổi
   const columns: GridColDef[] = [
     { 
       field: 'ho_ten', 
       headerName: 'Họ tên', 
       flex: 1.3,
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 500, textTransform: 'capitalize' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, color: '#333', textTransform: 'uppercase', fontSize: '0.8rem' }}>
           {params.value}
         </Typography>
       )
@@ -87,6 +99,11 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
       flex: 0.7,
       align: 'center',
       headerAlign: 'center',
+      renderCell: (params) => (
+        <Typography variant="body2" sx={{ fontWeight: 500, color: '#666' }}>
+          {params.value}
+        </Typography>
+      )
     },
     {
       field: 'actions',
@@ -100,7 +117,7 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
             e.stopPropagation();
             handleRemoveFromQueue(params.row.benhnhan_id);
           }}
-          sx={{ color: '#d32f2f' }}
+          sx={{ color: '#ccc', '&:hover': { color: '#d32f2f' } }}
         >
           <DeleteIcon fontSize="small" />
         </IconButton>
@@ -109,39 +126,67 @@ const DanhSachChoGrid: React.FC<DanhSachChoGridProps> = ({ onSelect, selectedId 
   ];
 
   return (
-    <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 1.5, bgcolor: '#1976d2', color: 'white', display: 'flex', justifyContent: 'space-between' }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+    <Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+      <Box sx={{ 
+        p: 1.5, 
+        bgcolor: '#1976d2', 
+        color: 'white', 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 1 }}>
           DANH SÁCH CHỜ
         </Typography>
-        <Typography variant="subtitle1">
+        <Box sx={{ 
+          bgcolor: 'white', 
+          color: '#1976d2', 
+          px: 1.2, 
+          py: 0.2, 
+          borderRadius: 10, 
+          fontSize: '0.85rem', 
+          fontWeight: 'bold' 
+        }}>
           {patients.length}
-        </Typography>
+        </Box>
       </Box>
 
       <DataGrid
         rows={patients.map((p) => ({
           ...p,
-          id: p.id, // ID chính cho DataGrid
+          id: p.id, 
           thang_tuoi_display: hienThiTuoiTheoThang(p.thang_tuoi),
         }))}
         columns={columns}
-        onRowClick={(params) => onSelect(params.row)} // Truyền toàn bộ object row (có địa chỉ, sđt...)
+        onRowClick={(params) => onSelect(params.row)}
+        getRowId={(row) => row.id}
         sx={{
           border: 'none',
           '& .MuiDataGrid-row': {
             cursor: 'pointer',
-            backgroundColor: (params: any) => 
-              params.row?.benhnhan_id === selectedId ? '#e3f2fd !important' : 'inherit',
+            '&.Mui-selected': {
+              backgroundColor: '#e3f2fd !important',
+            },
             '&:hover': { bgcolor: '#f5f5f5' }
           },
-          '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 'bold' },
-          '& .MuiDataGrid-cell:focus': { outline: 'none' },
+          '& .MuiDataGrid-columnHeaders': {
+            bgcolor: '#fafafa',
+            borderBottom: '1px solid #eee'
+          },
+          '& .MuiDataGrid-columnHeaderTitle': { 
+            fontWeight: 'bold',
+            fontSize: '0.75rem',
+            color: '#777'
+          },
+          '& .MuiDataGrid-cell': {
+            borderBottom: '1px solid #f0f0f0',
+            '&:focus': { outline: 'none' }
+          },
         }}
         hideFooter
         disableColumnMenu
         disableRowSelectionOnClick
-      />
+      </Box>
     </Box>
   );
 };
