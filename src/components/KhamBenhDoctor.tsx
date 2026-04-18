@@ -1,9 +1,23 @@
+// KhamBenhDoctor.tsx - Đã fix lỗi Grid & Tích hợp Enter Logic
 import React, { useState, useRef } from 'react';
-import { Box, TextField, Button, Grid, Typography, Divider, IconButton, Tooltip } from '@mui/material';
+import { Box, TextField, Button, Grid, Typography } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import { supabase } from '@/lib/supabase';
 
-// ... interface giữ nguyên ...
+interface KhamBenh {
+  benhnhan_id: string;
+  bacsi_id: string;
+  ngay_kham: string;
+  trieu_chung: string;
+  chan_doan: string;
+  so_ngay_toa: number;
+}
+
+interface KhamBenhDoctorProps {
+  setKhambenhID: (id: string | null) => void;
+  setKhambenh: React.Dispatch<React.SetStateAction<KhamBenh>>;
+  khambenh: KhamBenh;
+}
 
 const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({ 
   setKhambenhID, 
@@ -11,6 +25,8 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
   khambenh 
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Refs để điều khiển focus khi nhấn Enter
   const trieuChungRef = useRef<HTMLDivElement>(null);
   const chanDoanRef = useRef<HTMLDivElement>(null);
 
@@ -18,13 +34,28 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
     setKhambenh(prev => ({ ...prev, [field]: value }));
   };
 
-  // Logic handleSave giữ nguyên của bạn...
+  // Hàm xử lý phím Enter để chuyển ô hoặc lưu
+  const handleKeyDown = (e: React.KeyboardEvent, nextRef?: React.RefObject<HTMLDivElement>, isSubmit: boolean = false) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (isSubmit) {
+        handleSave();
+      } else if (nextRef && nextRef.current) {
+        const input = nextRef.current.querySelector('input, textarea') as HTMLElement;
+        input?.focus();
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!khambenh.benhnhan_id) return alert('Vui lòng chọn bệnh nhân!');
+    
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return alert('Phiên làm việc hết hạn!');
+    
     if (!khambenh.trieu_chung || !khambenh.chan_doan) {
       alert('Vui lòng nhập Triệu chứng và Chẩn đoán');
+      trieuChungRef.current?.querySelector('textarea')?.focus();
       return;
     }
 
@@ -43,11 +74,15 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
         .select('id').single();
 
       if (insertError) throw insertError;
+      
       setKhambenhID(data.id.toString());
+      
+      // Xóa khỏi danh sách chờ sau khi khám xong
       await supabase.from('danhsachcho').delete().eq('benhnhan_id', khambenh.benhnhan_id);
-      alert('Đã lưu nội dung khám!');
+      
+      alert('Đã lưu nội dung khám thành công!');
     } catch (error: any) {
-      alert('Lỗi: ' + error.message);
+      alert('Lỗi lưu dữ liệu: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -56,42 +91,42 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
   return (
     <Box sx={{ position: 'relative' }}>
       <Grid container spacing={1}>
-        {/* HÀNG 1: TRIỆU CHỨNG & CHẨN ĐOÁN + NÚT LƯU */}
-        <Grid item xs={11.4}>
+        {/* CỘT NHẬP LIỆU (95% chiều rộng) */}
+        <Grid xs={11.4}>
           <Grid container spacing={1}>
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <TextField
                 ref={trieuChungRef}
                 fullWidth
-                label="Triệu chứng"
+                label="1. Triệu chứng"
                 multiline
                 rows={3}
-                variant="outlined"
                 value={khambenh.trieu_chung}
                 onChange={(e) => handleInputChange('trieu_chung', e.target.value)}
-                placeholder="Nhập triệu chứng hiện tại..."
+                onKeyDown={(e) => handleKeyDown(e, chanDoanRef)}
+                placeholder="Nhập triệu chứng..."
                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff' } }}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <TextField
                 ref={chanDoanRef}
                 fullWidth
-                label="Chẩn đoán"
+                label="2. Chẩn đoán"
                 multiline
                 rows={3}
-                variant="outlined"
                 value={khambenh.chan_doan}
                 onChange={(e) => handleInputChange('chan_doan', e.target.value)}
-                placeholder="Kết luận bệnh lý..."
+                onKeyDown={(e) => handleKeyDown(e, undefined, true)} // Enter ở đây sẽ gọi Save
+                placeholder="Nhập chẩn đoán..."
                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff' } }}
               />
             </Grid>
           </Grid>
         </Grid>
 
-        {/* NÚT LƯU DỌC (GIỐNG ẢNH 1) */}
-        <Grid item xs={0.6} sx={{ display: 'flex' }}>
+        {/* NÚT LƯU DỌC (5% chiều rộng - Giống Ảnh 1) */}
+        <Grid xs={0.6} sx={{ display: 'flex' }}>
           <Button
             fullWidth
             variant="contained"
@@ -105,15 +140,16 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
               display: 'flex',
               flexDirection: 'column',
               boxShadow: 'none',
-              bgcolor: '#4caf50'
+              bgcolor: '#4caf50',
+              '&:hover': { bgcolor: '#388e3c' }
             }}
           >
             {isLoading ? '...' : <SaveIcon />}
           </Button>
         </Grid>
 
-        {/* HÀNG 2: THÔNG TIN PHỤ */}
-        <Grid item xs={12}>
+        {/* HÀNG THÔNG TIN PHỤ */}
+        <Grid xs={12}>
           <Box sx={{ display: 'flex', gap: 2, mt: 1, alignItems: 'center' }}>
             <TextField
               label="Hẹn tái khám"
@@ -122,7 +158,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
               value={khambenh.ngay_kham}
               onChange={(e) => handleInputChange('ngay_kham', e.target.value)}
               InputLabelProps={{ shrink: true }}
-              sx={{ width: 180 }}
+              sx={{ width: 160 }}
             />
             <TextField
               label="Số ngày thuốc"
@@ -130,10 +166,10 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
               size="small"
               value={khambenh.so_ngay_toa}
               onChange={(e) => handleInputChange('so_ngay_toa', parseInt(e.target.value) || 0)}
-              sx={{ width: 120 }}
+              sx={{ width: 110 }}
             />
-            <Typography variant="caption" sx={{ color: 'text.secondary', ml: 'auto' }}>
-              BS: {khambenh.bacsi_id.slice(0, 8)}...
+            <Typography variant="caption" sx={{ color: 'text.secondary', ml: 'auto', fontWeight: 500 }}>
+              ID Bác sĩ: {khambenh.bacsi_id ? khambenh.bacsi_id.slice(0, 8) : '---'}
             </Typography>
           </Box>
         </Grid>
