@@ -1,6 +1,6 @@
-// KhamBenhDoctor.tsx - Đã fix lỗi Grid (thêm item) & Tích hợp Enter Logic
+// KhamBenhDoctor.tsx - Tối ưu Grid & Fix lỗi Build Netlify
 import React, { useState, useRef } from 'react';
-import { Box, TextField, Button, Grid, Typography } from '@mui/material';
+import { Box, TextField, Button, Grid, Typography, CircularProgress } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import { supabase } from '@/lib/supabase';
 
@@ -34,7 +34,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
     setKhambenh(prev => ({ ...prev, [field]: value }));
   };
 
-  // Hàm xử lý phím Enter để chuyển ô hoặc lưu
+  // Hàm xử lý phím Enter để chuyển ô hoặc lưu nhanh
   const handleKeyDown = (e: React.KeyboardEvent, nextRef?: React.RefObject<HTMLDivElement>, isSubmit: boolean = false) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -48,19 +48,20 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
   };
 
   const handleSave = async () => {
-    if (!khambenh.benhnhan_id) return alert('Vui lòng chọn bệnh nhân!');
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return alert('Phiên làm việc hết hạn!');
+    if (!khambenh.benhnhan_id) return alert('Vui lòng chọn bệnh nhân từ danh sách chờ!');
     
     if (!khambenh.trieu_chung || !khambenh.chan_doan) {
-      alert('Vui lòng nhập Triệu chứng và Chẩn đoán');
-      trieuChungRef.current?.querySelector('textarea')?.focus();
+      alert('Vui lòng nhập đầy đủ Triệu chứng và Chẩn đoán');
+      const emptyRef = !khambenh.trieu_chung ? trieuChungRef : chanDoanRef;
+      emptyRef.current?.querySelector('textarea')?.focus();
       return;
     }
 
     setIsLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Phiên làm việc hết hạn, vui lòng đăng nhập lại.');
+
       const { data, error: insertError } = await supabase
         .from('khambenh')
         .insert([{
@@ -75,14 +76,15 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
 
       if (insertError) throw insertError;
       
+      // Lưu ID để component ToaThuoc có thể sử dụng
       setKhambenhID(data.id.toString());
       
-      // Xóa khỏi danh sách chờ sau khi khám xong
+      // Xóa khỏi danh sách chờ sau khi đã tạo phiếu khám thành công
       await supabase.from('danhsachcho').delete().eq('benhnhan_id', khambenh.benhnhan_id);
       
-      alert('Đã lưu nội dung khám thành công!');
+      alert('Đã lưu nội dung khám. Bây giờ bạn có thể kê toa thuốc.');
     } catch (error: any) {
-      alert('Lỗi lưu dữ liệu: ' + error.message);
+      alert('Lỗi: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -91,10 +93,10 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
   return (
     <Box sx={{ position: 'relative' }}>
       <Grid container spacing={1}>
-        {/* CỘT NHẬP LIỆU (95% chiều rộng) - FIXED: Thêm 'item' */}
-        <Grid item xs={11.4}>
+        {/* CỘT NHẬP LIỆU (Chiếm phần lớn chiều rộng) */}
+        <Grid xs={11}>
           <Grid container spacing={1}>
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <TextField
                 ref={trieuChungRef}
                 fullWidth
@@ -104,11 +106,11 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
                 value={khambenh.trieu_chung}
                 onChange={(e) => handleInputChange('trieu_chung', e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, chanDoanRef)}
-                placeholder="Nhập triệu chứng..."
+                placeholder="Ví dụ: Ho, sốt, sổ mũi..."
                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff' } }}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <TextField
                 ref={chanDoanRef}
                 fullWidth
@@ -118,15 +120,15 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
                 value={khambenh.chan_doan}
                 onChange={(e) => handleInputChange('chan_doan', e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, undefined, true)}
-                placeholder="Nhập chẩn đoán..."
+                placeholder="Ví dụ: Viêm họng cấp..."
                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff' } }}
               />
             </Grid>
           </Grid>
         </Grid>
 
-        {/* NÚT LƯU DỌC (5% chiều rộng) - FIXED: Thêm 'item' */}
-        <Grid item xs={0.6} sx={{ display: 'flex' }}>
+        {/* NÚT LƯU DỌC (Tối ưu cho thao tác nhanh) */}
+        <Grid xs={1} sx={{ display: 'flex' }}>
           <Button
             fullWidth
             variant="contained"
@@ -144,15 +146,18 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
               '&:hover': { bgcolor: '#388e3c' }
             }}
           >
-            {isLoading ? '...' : <SaveIcon />}
+            {isLoading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+            <Typography variant="caption" sx={{ mt: 0.5, fontWeight: 'bold', display: { xs: 'none', md: 'block' } }}>
+              LƯU
+            </Typography>
           </Button>
         </Grid>
 
-        {/* HÀNG THÔNG TIN PHỤ - FIXED: Thêm 'item' */}
-        <Grid item xs={12}>
-          <Box sx={{ display: 'flex', gap: 2, mt: 1, alignItems: 'center' }}>
+        {/* HÀNG THÔNG TIN BỔ SUNG */}
+        <Grid xs={12}>
+          <Box sx={{ display: 'flex', gap: 2, mt: 1, alignItems: 'center', flexWrap: 'wrap' }}>
             <TextField
-              label="Hẹn tái khám"
+              label="Ngày khám / Hẹn"
               type="date"
               size="small"
               value={khambenh.ngay_kham}
@@ -168,9 +173,11 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
               onChange={(e) => handleInputChange('so_ngay_toa', parseInt(e.target.value) || 0)}
               sx={{ width: 110 }}
             />
-            <Typography variant="caption" sx={{ color: 'text.secondary', ml: 'auto', fontWeight: 500 }}>
-              BS ID: {khambenh.bacsi_id ? khambenh.bacsi_id.slice(0, 8) : '---'}
-            </Typography>
+            <Box sx={{ ml: 'auto', textAlign: 'right' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                Bệnh nhân: <b>{khambenh.ho_ten || 'Chưa chọn'}</b>
+              </Typography>
+            </Box>
           </Box>
         </Grid>
       </Grid>
