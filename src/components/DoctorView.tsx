@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Topbar from "./Topbar";
 import Sidebar from "./Sidebar";
@@ -76,7 +76,8 @@ const DoctorView: React.FC = () => {
     <Box sx={{ bgcolor: "#f0f2f5", minHeight: "100vh" }}>
       <Topbar />
       <Box sx={{ display: "flex", height: "calc(100vh - 64px)", mt: 8 }}>
-        {/* SIDEBAR */}
+        
+        {/* SIDEBAR NAVIGATION */}
         {drawerOpen && (
           <Box sx={{ width: 240, display: "flex", flexDirection: "column", bgcolor: "background.paper", boxShadow: 1, zIndex: 1200 }}>
             <Sidebar role="doctor" />
@@ -97,10 +98,10 @@ const DoctorView: React.FC = () => {
           <MenuIcon />
         </IconButton>
 
-        {/* MAIN CONTENT AREA */}
+        {/* MAIN WORKSPACE */}
         <Box sx={{ flex: 1, p: 1.5, display: "flex", gap: 1.5, overflow: "hidden" }}>
           
-          {/* LEFT COLUMN: DANH SÁCH CHỜ & LỊCH SỬ */}
+          {/* LEFT: QUEUE & HISTORY */}
           <Box sx={{ width: "320px", display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Paper sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", borderRadius: 2 }}>
               <DanhSachChoGrid
@@ -133,10 +134,10 @@ const DoctorView: React.FC = () => {
             </Paper>
           </Box>
 
-          {/* RIGHT COLUMN: CHI TIẾT KHÁM BỆNH */}
+          {/* RIGHT: EXAMINATION & PRESCRIPTION */}
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1, overflowY: "auto" }}>
             
-            {/* 1. HỒ SƠ BỆNH NHÂN (ACCORDION THU PHÓNG) */}
+            {/* 1. PATIENT PROFILE (ACCORDION) */}
             <Accordion defaultExpanded sx={{ borderRadius: '8px !important', overflow: 'hidden', boxShadow: 1 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: "#f8f9fa", borderBottom: '1px solid #eee' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -150,26 +151,27 @@ const DoctorView: React.FC = () => {
                 </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 2 }}>
+                {/* LỖI FIXED: Loại bỏ 'item' khỏi Grid components */}
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={4}>
+                  <Grid xs={12} md={4}>
                     <Box sx={{ p: 1, bgcolor: '#e8f5e9', borderRadius: 1, border: '1px solid #c8e6c9' }}>
                       <Typography variant="caption" color="success.main" sx={{ fontWeight: 700 }}>GIỚI TÍNH / TUỔI</Typography>
                       <Typography variant="body1" fontWeight={600}>{khambenh.tuoi_display || "---"}</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid xs={12} md={4}>
                     <Box sx={{ p: 1, bgcolor: '#fce4ec', borderRadius: 1, border: '1px solid #f8bbd0' }}>
                       <Typography variant="caption" color="secondary.main" sx={{ fontWeight: 700 }}>CÂN NẶNG</Typography>
                       <Typography variant="body1" fontWeight={600}>{khambenh.can_nang ? `${khambenh.can_nang} kg` : "---"}</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid xs={12} md={4}>
                     <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}>
                       <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700 }}>ĐIỆN THOẠI</Typography>
                       <Typography variant="body1" fontWeight={600}>{khambenh.so_dien_thoai || "---"}</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid xs={12}>
                     <Box sx={{ p: 1, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffe0b2' }}>
                       <Typography variant="caption" color="warning.main" sx={{ fontWeight: 700 }}>ĐỊA CHỈ</Typography>
                       <Typography variant="body2" fontWeight={500}>{khambenh.dia_chi || "---"}</Typography>
@@ -179,7 +181,7 @@ const DoctorView: React.FC = () => {
               </AccordionDetails>
             </Accordion>
 
-            {/* 2. NỘI DUNG KHÁM (THU PHÓNG) */}
+            {/* 2. EXAMINATION CONTENT (ACCORDION) */}
             <Accordion defaultExpanded sx={{ borderRadius: '8px !important', overflow: 'hidden', boxShadow: 1 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: "#f8f9fa", borderBottom: '1px solid #eee' }}>
                 <Typography sx={sectionTitleSx}>Nội dung thăm khám</Typography>
@@ -193,7 +195,7 @@ const DoctorView: React.FC = () => {
               </AccordionDetails>
             </Accordion>
 
-            {/* 3. LỊCH SỬ TOA CŨ (CHỈ HIỆN KHI CHỌN TRONG LỊCH SỬ) */}
+            {/* 3. PREVIOUS VISIT DETAIL */}
             {selectedVisitId && (
               <Accordion defaultExpanded sx={{ borderRadius: '8px !important', bgcolor: "#fffde7", boxShadow: 1 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -205,12 +207,12 @@ const DoctorView: React.FC = () => {
               </Accordion>
             )}
 
-            {/* 4. KÊ TOA THUỐC (THU PHÓNG) */}
+            {/* 4. NEW PRESCRIPTION (ACCORDION) */}
             <Accordion defaultExpanded sx={{ borderRadius: '8px !important', overflow: 'hidden', boxShadow: 1 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: "#f8f9fa", borderBottom: '1px solid #eee' }}>
                 <Typography sx={sectionTitleSx}>Toa thuốc mới</Typography>
               </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}> {/* P:0 để DataGrid sát lề đẹp hơn */}
+              <AccordionDetails sx={{ p: 0 }}>
                 {khambenhID ? (
                   <ToaThuocDoctor khambenhID={khambenhID} />
                 ) : (
