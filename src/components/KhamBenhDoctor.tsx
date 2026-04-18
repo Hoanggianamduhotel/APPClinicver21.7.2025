@@ -1,4 +1,4 @@
-// KhamBenhDoctor.tsx - Đã fix lỗi Grid & Tích hợp Enter Logic
+// KhamBenhDoctor.tsx - Đã fix lỗi Grid (thêm item) & Tích hợp Enter Logic
 import React, { useState, useRef } from 'react';
 import { Box, TextField, Button, Grid, Typography } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
@@ -91,10 +91,10 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
   return (
     <Box sx={{ position: 'relative' }}>
       <Grid container spacing={1}>
-        {/* CỘT NHẬP LIỆU (95% chiều rộng) */}
-        <Grid xs={11.4}>
+        {/* CỘT NHẬP LIỆU (95% chiều rộng) - FIXED: Thêm 'item' */}
+        <Grid item xs={11.4}>
           <Grid container spacing={1}>
-            <Grid xs={12} md={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 ref={trieuChungRef}
                 fullWidth
@@ -108,7 +108,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff' } }}
               />
             </Grid>
-            <Grid xs={12} md={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 ref={chanDoanRef}
                 fullWidth
@@ -117,7 +117,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
                 rows={3}
                 value={khambenh.chan_doan}
                 onChange={(e) => handleInputChange('chan_doan', e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, undefined, true)} // Enter ở đây sẽ gọi Save
+                onKeyDown={(e) => handleKeyDown(e, undefined, true)}
                 placeholder="Nhập chẩn đoán..."
                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff' } }}
               />
@@ -125,8 +125,8 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           </Grid>
         </Grid>
 
-        {/* NÚT LƯU DỌC (5% chiều rộng - Giống Ảnh 1) */}
-        <Grid xs={0.6} sx={{ display: 'flex' }}>
+        {/* NÚT LƯU DỌC (5% chiều rộng) - FIXED: Thêm 'item' */}
+        <Grid item xs={0.6} sx={{ display: 'flex' }}>
           <Button
             fullWidth
             variant="contained"
@@ -148,8 +148,8 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
           </Button>
         </Grid>
 
-        {/* HÀNG THÔNG TIN PHỤ */}
-        <Grid xs={12}>
+        {/* HÀNG THÔNG TIN PHỤ - FIXED: Thêm 'item' */}
+        <Grid item xs={12}>
           <Box sx={{ display: 'flex', gap: 2, mt: 1, alignItems: 'center' }}>
             <TextField
               label="Hẹn tái khám"
@@ -169,7 +169,7 @@ const KhamBenhDoctor: React.FC<KhamBenhDoctorProps> = ({
               sx={{ width: 110 }}
             />
             <Typography variant="caption" sx={{ color: 'text.secondary', ml: 'auto', fontWeight: 500 }}>
-              ID Bác sĩ: {khambenh.bacsi_id ? khambenh.bacsi_id.slice(0, 8) : '---'}
+              BS ID: {khambenh.bacsi_id ? khambenh.bacsi_id.slice(0, 8) : '---'}
             </Typography>
           </Box>
         </Grid>
