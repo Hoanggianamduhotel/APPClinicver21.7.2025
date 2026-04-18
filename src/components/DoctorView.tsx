@@ -1,3 +1,4 @@
+// DoctorView.tsx - Cập nhật tương thích MUI v5 và Netlify Build
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Topbar from "./Topbar";
@@ -151,27 +152,27 @@ const DoctorView: React.FC = () => {
                 </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 2 }}>
-                {/* FIXED: Thêm thuộc tính 'item' để tương thích MUI v5 trên Netlify */}
+                {/* REMOVED 'item' prop for better MUI v5/Next.js compatibility */}
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={4}>
+                  <Grid xs={12} md={4}>
                     <Box sx={{ p: 1, bgcolor: '#e8f5e9', borderRadius: 1, border: '1px solid #c8e6c9' }}>
                       <Typography variant="caption" color="success.main" sx={{ fontWeight: 700 }}>GIỚI TÍNH / TUỔI</Typography>
                       <Typography variant="body1" fontWeight={600}>{khambenh.tuoi_display || "---"}</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid xs={12} md={4}>
                     <Box sx={{ p: 1, bgcolor: '#fce4ec', borderRadius: 1, border: '1px solid #f8bbd0' }}>
                       <Typography variant="caption" color="secondary.main" sx={{ fontWeight: 700 }}>CÂN NẶNG</Typography>
                       <Typography variant="body1" fontWeight={600}>{khambenh.can_nang ? `${khambenh.can_nang} kg` : "---"}</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid xs={12} md={4}>
                     <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}>
                       <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700 }}>ĐIỆN THOẠI</Typography>
                       <Typography variant="body1" fontWeight={600}>{khambenh.so_dien_thoai || "---"}</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid xs={12}>
                     <Box sx={{ p: 1, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffe0b2' }}>
                       <Typography variant="caption" color="warning.main" sx={{ fontWeight: 700 }}>ĐỊA CHỈ</Typography>
                       <Typography variant="body2" fontWeight={500}>{khambenh.dia_chi || "---"}</Typography>
